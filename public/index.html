@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>3D Animation Demos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .demo-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .demo-item {
+            background-color: #f5f5f5;
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .demo-item h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .demo-item p {
+            color: #666;
+        }
+        .demo-link {
+            display: inline-block;
+            margin-top: 10px;
+            background-color: #3498db;
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .demo-link:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <h1>3D Animation Demos</h1>
+    
+    <ul class="demo-list">
+        <li class="demo-item">
+            <h2>FBX Animation with Click Switching</h2>
+            <p>This demo showcases a 3D character with animations that switch when you click on the model. Uses FBX format.</p>
+            <a href="/fbx-animation" class="demo-link">View Demo</a>
+        </li>
+        
+        <li class="demo-item">
+            <h2>GLB Animation with Optimized Lighting</h2>
+            <p>A demonstration of GLB model animation with enhanced lighting effects, including directional, fill, ambient, and back lighting.</p>
+            <a href="/glb-lighting" class="demo-link">View Demo</a>
+        </li>
+        
+        <li class="demo-item">
+            <h2>GLB Animation with Button Control</h2>
+            <p>This demo allows you to switch between animations using button controls. Features a normal idle animation and a greeting animation.</p>
+            <a href="/glb-button" class="demo-link">View Demo</a>
+        </li>
+    </ul>
+
+    <div style="margin-top: 30px; padding: 15px; background-color: #e8f4f8; border-radius: 5px;">
+        <h3 style="margin-top: 0; color: #2980b9;">API Endpoints</h3>
+        <p>This demo now includes a server-side component with the following API endpoints:</p>
+        <ul>
+            <li><a href="/api/models" target="_blank">/api/models</a> - Get a list of available 3D models</li>
+        </ul>
+    </div>
+    
+    <footer style="text-align: center; margin-top: 30px; color: #777;">
+        <p>Three.js Animation Demonstrations - COMP4025 Project</p>
+    </footer>
+
+    <script>
+        // Simple check to confirm client-server connection
+        fetch('/api/models')
+            .then(response => response.json())
+            .then(data => console.log('Connected to server API:', data))
+            .catch(error => console.error('API connection error:', error));
+    </script>
+</body>
+</html> 
