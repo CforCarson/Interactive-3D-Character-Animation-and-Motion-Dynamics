@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Hokage Office - Three.js Viewer</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden;
+            background-color: #87cefa;
+        }
+        canvas { 
+            width: 100%; 
+            height: 100% 
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            pointer-events: none;
+            font-size: 18px;
+        }
+        #loading {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            background-color: rgba(0,0,0,0.5);
+            padding: 5px;
+        }
+        #fullscreenBtn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #fullscreenBtn:hover {
+            background-color: rgba(0,0,0,0.7);
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Hokage Office - Three.js Viewer</div>
+    <div id="loading">Loading model...</div>
+    <button id="fullscreenBtn">Fullscreen</button>
+    
+    <!-- Include Three.js library -->
+    <script src="js/three.min.js"></script>
+    
+    <!-- Include necessary loaders -->
+    <script src="js/loaders/FBXLoader.js"></script>
+    <script src="js/loaders/GLTFLoader.js"></script>
+    <script src="js/loaders/OrbitControls.js"></script>
+    
+    <!-- Required for FBXLoader -->
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/inflate.min.js"></script>
+    
+    <script>
+        // Set up the scene, camera, and renderer
+        var scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x336633); // Darker green background like reference
+        
+        var aspect = window.innerWidth / window.innerHeight;
+        var camera = new THREE.PerspectiveCamera(65, aspect, 0.1, 2000); // Wider FOV
+        
+        var renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true; // Enable shadow mapping for realistic shadows
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+        document.body.appendChild(renderer.domElement);
+        
+        // Add lighting to properly illuminate the scene
+        var directionalLight = new THREE.DirectionalLight(0xffffcc, 1.2); // Warmer light
+        directionalLight.position.set(100, 200, 100);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 500;
+        directionalLight.shadow.bias = -0.0005;
+        scene.add(directionalLight); 
+        
+        // Add a secondary light from the other side
+        var secondaryLight = new THREE.DirectionalLight(0xffffcc, 0.7);
+        secondaryLight.position.set(-100, 100, -100);
+        scene.add(secondaryLight);
+        
+        // Add bottom light to illuminate the underside
+        var bottomLight = new THREE.DirectionalLight(0xffffcc, 0.8);
+        bottomLight.position.set(0, -100, 0);
+        bottomLight.castShadow = false; // No shadows from bottom
+        scene.add(bottomLight);
+        
+        // Add ambient light for overall scene illumination - increased intensity
+        var ambientLight = new THREE.AmbientLight(0x555555, 0.8);
+        scene.add(ambientLight);
+        
+        // Add a ground plane with sandy texture
+        var groundGeometry = new THREE.PlaneGeometry(200, 200);
+        var groundTexture = new THREE.TextureLoader().load('hokage-office/textures/Ground_Texture.png', function(texture) {
+            texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(10, 10);
+        });
+        var groundMaterial = new THREE.MeshStandardMaterial({
+            color: 0xE6D2B5, // Sandy color
+            map: groundTexture,
+            roughness: 0.9,
+            metalness: 0.1,
+            side: THREE.DoubleSide
+        });
+        var ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+        ground.position.y = -0.1; // Slightly below the origin
+        ground.receiveShadow = true;
+        scene.add(ground);
+        
+        // Create subtle fog effect - but less intense than before
+        scene.fog = new THREE.FogExp2(0x336633, 0.001);
+        
+        // Setup camera position and controls - extremely close
+        camera.position.set(8, 6, 8);
+        camera.lookAt(0, 5, 0);
+        
+        // Add orbit controls with completely unrestricted movement
+        var controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05; // More responsive
+        controls.enableZoom = true;
+        controls.zoomSpeed = 1.2; // Faster zoom
+        controls.autoRotate = false;
+        controls.maxPolarAngle = Infinity; // No restrictions on rotation
+        controls.minPolarAngle = 0; // No restrictions on rotation
+        controls.minDistance = 0.1; // Allow extremely close zoom
+        controls.maxDistance = Infinity; // No maximum distance
+        controls.rotateSpeed = 1.2; // Faster rotation
+        controls.panSpeed = 1.2; // Faster panning
+        controls.enablePan = true; // Enable panning
+        
+        // Set the initial target to where the model will be positioned
+        controls.target.set(0, 5, 0); // Lower target point
+        controls.update();
+        
+        // Create a variable to hold our model
+        var hokageOffice;
+        var fallbackSize = 1.5; // Scale factor for fallback building
+        
+        // Create a loading manager to track progress
+        var loadingManager = new THREE.LoadingManager();
+        loadingManager.onProgress = function(url, itemsLoaded, itemsTotal) {
+            var loadingElement = document.getElementById('loading');
+            loadingElement.textContent = 'Loading: ' + Math.round(itemsLoaded / itemsTotal * 100) + '%';
+        };
+        
+        loadingManager.onLoad = function() {
+            document.getElementById('loading').style.display = 'none';
+            console.log('All resources loaded');
+        };
+        
+        loadingManager.onError = function(url) {
+            console.error('Error loading ' + url);
+            document.getElementById('loading').textContent = 'Error loading ' + url;
+            
+            // Attempt to handle texture path errors
+            if (url.includes('hokage-office/source/') && url.includes('.png')) {
+                // Extract the texture name from the incorrect path
+                const textureName = url.split('/').pop();
+                // Try loading from the correct path
+                const correctedUrl = 'hokage-office/textures/' + textureName;
+                console.log('Attempting to load from correct path:', correctedUrl);
+                return new THREE.TextureLoader().load(correctedUrl);
+            }
+        };
+        
+        // Create skybox
+        function createSkyBox() {
+            const skyGeo = new THREE.SphereGeometry(1000, 32, 32);
+            const skyMat = new THREE.MeshBasicMaterial({
+                color: 0x336633,
+                side: THREE.BackSide
+            });
+            const sky = new THREE.Mesh(skyGeo, skyMat);
+            scene.add(sky);
+            
+            // Add subtle clouds using particle system
+            const cloudParticles = [];
+            const particleCount = 200;
+            const particleGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+            const particleMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.3,
+                roughness: 1
+            });
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                particle.position.set(
+                    Math.random() * 500 - 250,
+                    Math.random() * 100 + 50,
+                    Math.random() * 500 - 250
+                );
+                particle.scale.set(
+                    Math.random() * 6 + 2,
+                    Math.random() * 2 + 0.5,
+                    Math.random() * 6 + 2
+                );
+                cloudParticles.push(particle);
+                scene.add(particle);
+            }
+            
+            return cloudParticles;
+        }
+        
+        const cloudParticles = createSkyBox();
+        
+        // Create a fallback building - improved to match reference image
+        function createFallbackBuilding(scale = 1) {
+            // Remove any existing hokage office model
+            if (hokageOffice) {
+                scene.remove(hokageOffice);
+            }
+            
+            // Create a group to hold all parts of the building
+            var buildingGroup = new THREE.Group();
+            
+            // Create materials with Naruto-themed colors that match reference
+            var orangeMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xE67E22, 
+                roughness: 0.7,
+                side: THREE.DoubleSide // Render both sides of faces
+            }); // Main building color
+            var greenMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x2ECC71, 
+                roughness: 0.7,
+                side: THREE.DoubleSide 
+            }); // For plants
+            var roofMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xD35400, 
+                roughness: 0.5,
+                side: THREE.DoubleSide 
+            }); // Darker orange for roof
+            var wallMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xECF0F1, 
+                roughness: 0.8,
+                side: THREE.DoubleSide 
+            }); // White walls
+            var sandMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xE6D2B5, 
+                roughness: 0.9,
+                side: THREE.DoubleSide 
+            }); // Sandy base
+            
+            // Try to load actual textures for the materials
+            new THREE.TextureLoader(loadingManager).load('hokage-office/textures/Office_TEXTURE.png', 
+                function(texture) {
+                    orangeMaterial.map = texture;
+                    orangeMaterial.needsUpdate = true;
+                },
+                undefined,
+                function() {
+                    console.log('Could not load office texture, using fallback color');
+                }
+            );
+            
+            // Create octagonal platform for the base
+            var platformGeometry = new THREE.CylinderGeometry(25, 25, 2, 8);
+            var platform = new THREE.Mesh(platformGeometry, sandMaterial);
+            platform.position.y = 1;
+            platform.receiveShadow = true;
+            buildingGroup.add(platform);
+            
+            // Create the ground around the platform
+            var groundPlateGeometry = new THREE.PlaneGeometry(70, 70);
+            var groundPlate = new THREE.Mesh(groundPlateGeometry, sandMaterial);
+            groundPlate.rotation.x = -Math.PI / 2;
+            groundPlate.position.y = 0;
+            groundPlate.receiveShadow = true;
+            buildingGroup.add(groundPlate);
+            
+            // Main building structure - multi-level cylindrical like in reference
+            // Level 1 (bottom)
+            var level1 = new THREE.Mesh(
+                new THREE.CylinderGeometry(12, 14, 6, 8),
+                orangeMaterial
+            );
+            level1.position.y = 5;
+            level1.castShadow = true;
+            level1.receiveShadow = true;
+            buildingGroup.add(level1);
+            
+            // Level 2
+            var level2 = new THREE.Mesh(
+                new THREE.CylinderGeometry(10, 12, 5, 8),
+                orangeMaterial
+            );
+            level2.position.y = 10.5;
+            level2.castShadow = true;
+            level2.receiveShadow = true;
+            buildingGroup.add(level2);
+            
+            // Level 3
+            var level3 = new THREE.Mesh(
+                new THREE.CylinderGeometry(8, 10, 5, 8),
+                orangeMaterial
+            );
+            level3.position.y = 15.5;
+            level3.castShadow = true;
+            level3.receiveShadow = true;
+            buildingGroup.add(level3);
+            
+            // Top cap/roof
+            var roof = new THREE.Mesh(
+                new THREE.ConeGeometry(8, 6, 8),
+                roofMaterial
+            );
+            roof.position.y = 21;
+            roof.castShadow = true;
+            buildingGroup.add(roof);
+            
+            // Add the fire symbol on each side of the building
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const fireSymbol = new THREE.Mesh(
+                    new THREE.CircleGeometry(1.5, 32),
+                    new THREE.MeshStandardMaterial({ 
+                        color: 0xFF4500, 
+                        side: THREE.DoubleSide,
+                        emissive: 0xFF2000,
+                        emissiveIntensity: 0.3 
+                    })
+                );
+                
+                // Position on level 2
+                fireSymbol.position.set(
+                    Math.sin(angle) * 11,
+                    13,
+                    Math.cos(angle) * 11
+                );
+                fireSymbol.rotation.y = angle + Math.PI / 2;
+                buildingGroup.add(fireSymbol);
+            }
+            
+            // Add a smaller cylindrical building (like in reference)
+            var smallBuilding = new THREE.Mesh(
+                new THREE.CylinderGeometry(5, 6, 10, 8),
+                orangeMaterial
+            );
+            smallBuilding.position.set(15, 6, 5);
+            smallBuilding.castShadow = true;
+            smallBuilding.receiveShadow = true;
+            buildingGroup.add(smallBuilding);
+            
+            // Roof for small building
+            var smallRoof = new THREE.Mesh(
+                new THREE.ConeGeometry(5, 4, 8),
+                roofMaterial
+            );
+            smallRoof.position.set(15, 13, 5);
+            smallRoof.castShadow = true;
+            buildingGroup.add(smallRoof);
+            
+            // Add a wall surrounding the base
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const nextAngle = ((i + 1) / 8) * Math.PI * 2;
+                
+                // Calculate positions
+                const x1 = Math.sin(angle) * 24;
+                const z1 = Math.cos(angle) * 24;
+                const x2 = Math.sin(nextAngle) * 24;
+                const z2 = Math.cos(nextAngle) * 24;
+                
+                // Create wall segment
+                const wallGeometry = new THREE.BoxGeometry(
+                    Math.sqrt(Math.pow(x2-x1, 2) + Math.pow(z2-z1, 2)), 
+                    3, 
+                    1
+                );
+                const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                
+                // Position and rotate wall segment
+                wall.position.set((x1+x2)/2, 2.5, (z1+z2)/2);
+                wall.rotation.y = Math.atan2(z1-z2, x2-x1) + Math.PI/2;
+                wall.castShadow = true;
+                wall.receiveShadow = true;
+                buildingGroup.add(wall);
+            }
+            
+            // Add entrance path
+            const pathGeometry = new THREE.BoxGeometry(6, 0.5, 15);
+            const path = new THREE.Mesh(pathGeometry, wallMaterial);
+            path.position.set(0, 0.3, 30);
+            path.receiveShadow = true;
+            buildingGroup.add(path);
+            
+            // Add trees/vegetation on the platform corners
+            for (let i = 0; i < 8; i += 2) { // Fewer trees, more spaced out
+                const angle = (i / 8) * Math.PI * 2;
+                const treeGroup = new THREE.Group();
+                
+                // Create a custom tree that looks more like the reference
+                // Tree base (low bush)
+                const bush = new THREE.Mesh(
+                    new THREE.SphereGeometry(2, 8, 6),
+                    greenMaterial
+                );
+                bush.position.y = 3;
+                bush.scale.y = 0.7;
+                bush.castShadow = true;
+                treeGroup.add(bush);
+                
+                // Tree top (taller portion)
+                const top = new THREE.Mesh(
+                    new THREE.ConeGeometry(1.5, 3, 8),
+                    greenMaterial
+                );
+                top.position.y = 5;
+                top.castShadow = true;
+                treeGroup.add(top);
+                
+                // Position the tree group
+                treeGroup.position.set(
+                    Math.sin(angle) * 20,
+                    2,
+                    Math.cos(angle) * 20
+                );
+                buildingGroup.add(treeGroup);
+            }
+            
+            // Add flag poles
+            const poleGeometry = new THREE.CylinderGeometry(0.3, 0.3, 15, 8);
+            const pole = new THREE.Mesh(poleGeometry, new THREE.MeshStandardMaterial({ color: 0xBDC3C7 }));
+            pole.position.set(20, 8, 20);
+            pole.castShadow = true;
+            buildingGroup.add(pole);
+            
+            // Apply scale to the entire building
+            buildingGroup.scale.set(scale, scale, scale);
+            
+            // Set the new group as the hokage office
+            hokageOffice = buildingGroup;
+            scene.add(hokageOffice);
+            
+            // Update the camera and controls to focus on the new model
+            controls.target.set(0, 8 * scale, 0);
+            controls.update();
+            
+            // Position camera for a good view - extremely close
+            camera.position.set(10 * scale, 8 * scale, 10 * scale);
+            camera.lookAt(0, 8 * scale, 0);
+            
+            document.getElementById('loading').textContent = 'Showing Hokage Office (Stylized Version)';
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 2000);
+            
+            return buildingGroup;
+        }
+        
+        // Fix texture paths for FBX loader
+        THREE.Loader.Handlers = THREE.Loader.Handlers || {};
+        THREE.Loader.Handlers.add(/hokage-office\/source\/(.+)\.png$/, function(url) {
+            // Redirect to the correct texture path
+            const textureName = url.split('/').pop();
+            const correctedUrl = 'hokage-office/textures/' + textureName;
+            console.log('Redirecting texture:', url, 'to', correctedUrl);
+            return new THREE.TextureLoader(loadingManager).load(correctedUrl);
+        });
+        
+        // Load the Hokage Office model
+        function loadModels() {
+            // We need to use FBXLoader for FBX files
+            var loader = new THREE.FBXLoader(loadingManager);
+            
+            console.log('Starting to load model: hokage-office/source/Hokage_Office.fbx');
+            
+            // Override the resource path to look in textures folder
+            loader.setResourcePath('hokage-office/textures/');
+            
+            loader.load('hokage-office/source/Hokage_Office.fbx', 
+                // onLoad callback
+                function(object) {
+                    console.log('Model loaded successfully', object);
+                    
+                    // Add the loaded model to the scene
+                    scene.add(object);
+                    hokageOffice = object;
+                    
+                    // Reset position to origin
+                    hokageOffice.position.set(0, 0, 0);
+                    
+                    // Apply scale if model is too large/small
+                    hokageOffice.scale.set(0.2, 0.2, 0.2);
+                    
+                    // Make the model cast and receive shadows
+                    hokageOffice.traverse(function(child) {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                            
+                            // Ensure all materials render both sides of faces
+                            if (child.material) {
+                                if (Array.isArray(child.material)) {
+                                    child.material.forEach(mat => {
+                                        mat.side = THREE.DoubleSide;
+                                    });
+                                } else {
+                                    child.material.side = THREE.DoubleSide;
+                                }
+                            }
+                            
+                            // Debug material info
+                            console.log('Mesh found:', child.name);
+                            
+                            // Try to find and apply the texture based on name matching
+                            const meshName = child.name.toLowerCase();
+                            
+                            if (meshName.includes('entrance') && meshName.includes('roof')) {
+                                applyTexture(child, 'hokage-office/textures/EntranceRoof_Texture.png');
+                            } else if (meshName.includes('entrance') && meshName.includes('wall')) {
+                                applyTexture(child, 'hokage-office/textures/EntranceWall_Texture.png');
+                            } else if (meshName.includes('ground')) {
+                                applyTexture(child, 'hokage-office/textures/Ground_Texture.png');
+                            } else if (meshName.includes('office')) {
+                                applyTexture(child, 'hokage-office/textures/Office_TEXTURE.png');
+                            } else if (meshName.includes('pole')) {
+                                applyTexture(child, 'hokage-office/textures/Pole_Texture.png');
+                            } else if (meshName.includes('silo')) {
+                                applyTexture(child, 'hokage-office/textures/Silo_Texture.png');
+                            } else if (meshName.includes('tree')) {
+                                applyTexture(child, 'hokage-office/textures/Tree_texture.png');
+                            } else if (meshName.includes('wall')) {
+                                applyTexture(child, 'hokage-office/textures/Wall_Texture.png');
+                            }
+                        }
+                    });
+                    
+                    // Function to apply texture to a mesh
+                    function applyTexture(mesh, texturePath) {
+                        const textureLoader = new THREE.TextureLoader(loadingManager);
+                        textureLoader.load(
+                            texturePath,
+                            function(texture) {
+                                console.log('Applied texture:', texturePath);
+                                mesh.material = new THREE.MeshPhongMaterial({ 
+                                    map: texture,
+                                    shininess: 10,
+                                    side: THREE.DoubleSide // Render both sides
+                                });
+                            },
+                            undefined,
+                            function() {
+                                console.log('Could not load texture:', texturePath);
+                            }
+                        );
+                    }
+                    
+                    // Center the model - compute bounding box
+                    var bbox = new THREE.Box3().setFromObject(hokageOffice);
+                    var center = bbox.getCenter(new THREE.Vector3());
+                    var size = bbox.getSize(new THREE.Vector3());
+                    
+                    // Log size information for debugging
+                    console.log('Model bounding box:', {
+                        center: center,
+                        size: size,
+                        min: bbox.min,
+                        max: bbox.max
+                    });
+                    
+                    // Center the model at origin
+                    hokageOffice.position.x = -center.x;
+                    hokageOffice.position.z = -center.z;
+                    // Don't center vertically to keep it on the grid
+                    hokageOffice.position.y = 0;
+                    
+                    // Update controls target to model center
+                    controls.target.set(0, size.y / 2, 0);
+                    controls.update();
+                    
+                    // Position camera to see the whole model - extremely close
+                    camera.position.set(size.x * 0.5, size.y * 0.6, size.z * 0.5);
+                    camera.lookAt(controls.target);
+                    
+                    document.getElementById('loading').textContent = 'Model loaded!';
+                    setTimeout(() => {
+                        document.getElementById('loading').style.display = 'none';
+                    }, 2000);
+                },
+                // onProgress callback
+                function(xhr) {
+                    console.log('Loading progress: ' + (xhr.loaded / xhr.total * 100) + '% loaded');
+                    document.getElementById('loading').textContent = 'Loading model: ' + Math.round(xhr.loaded / xhr.total * 100) + '%';
+                },
+                // onError callback
+                function(error) {
+                    console.error('Error loading model:', error);
+                    document.getElementById('loading').textContent = 'Error loading FBX model. Showing fallback.';
+                    createFallbackBuilding(1.5); // Create fallback at 1.5x size
+                }
+            );
+        }
+        
+        // Cloud animation
+        function animateClouds() {
+            cloudParticles.forEach(cloud => {
+                cloud.position.x -= 0.05;
+                if (cloud.position.x < -250) {
+                    cloud.position.x = 250;
+                }
+            });
+        }
+        
+        // Fullscreen button
+        document.getElementById('fullscreenBtn').addEventListener('click', function() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        });
+        
+        // Call the function to load the model (or show the fallback directly)
+        try {
+            // Try loading the FBX model first
+            loadModels();
+        } catch (e) {
+            console.error('Failed to load model:', e);
+            // If it fails, display the fallback building
+            createFallbackBuilding(1.5);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            var width = window.innerWidth;
+            var height = window.innerHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        });
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update controls
+            controls.update();
+            
+            // Animate clouds
+            animateClouds();
+            
+            // Render the scene
+            renderer.render(scene, camera);
+        }
+        
+        // Start the animation loop
+        animate();
+    </script>
+</body>
+</html> 

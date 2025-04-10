@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>GLB 动画控制（按钮版）</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: Arial, sans-serif;
+        }
+        canvas { 
+            display: block; 
+        }
+        #control-btn {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 12px 24px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+            transition: all 0.3s;
+        }
+        #control-btn:hover {
+            background: #45a049;
+            transform: translateY(-50%) scale(1.05);
+        }
+        #control-btn:active {
+            transform: translateY(-50%) scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <button id="control-btn">greet</button>
+    
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
+    
+    <script>
+        // 1. 初始化场景
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x666666);
+        
+        // 2. 光源系统
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        mainLight.position.set(2, 3, 1);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.set(2048, 2048);
+        scene.add(mainLight);
+        
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        fillLight.position.set(-1, 2, 1);
+        scene.add(fillLight);
+        
+        scene.add(new THREE.AmbientLight(0x404040, 0.8));
+        
+        const backLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        backLight.position.set(-1, 1, -1);
+        scene.add(backLight);
+
+        // 3. 相机与渲染器
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 1.5, 4);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        
+        // 4. 轨道控制器
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 1, 0);
+        
+        // 5. 模型管理
+        const loader = new THREE.GLTFLoader();
+        let currentModel = null;
+        let mixer = null;
+        let currentAction = null;
+        let isPlayingGreet = false;
+
+        // 加载模型的函数
+        function loadModel(modelPath) {
+            return new Promise((resolve) => {
+                loader.load(modelPath, (gltf) => {
+                    const model = gltf.scene;
+                    model.position.y = 0;
+                    model.scale.set(1, 1, 1);
+                    
+                    // 设置模型阴影
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    
+                    resolve({
+                        model: model,
+                        animations: gltf.animations || []
+                    });
+                }, undefined, (error) => {
+                    console.error('模型加载错误:', error);
+                });
+            });
+        }
+        
+        // 播放动画
+        function playAnimation(animations, animationIndex = 0, loopType = THREE.LoopOnce) {
+            if (!animations || animations.length === 0) return 0;
+            
+            if (currentAction) {
+                currentAction.stop();
+            }
+            
+            currentAction = mixer.clipAction(animations[animationIndex]);
+            currentAction.reset();
+            currentAction.setLoop(loopType);
+            currentAction.clampWhenFinished = true;
+            currentAction.play();
+            
+            return animations[animationIndex].duration;
+        }
+        
+        // 正常动画循环
+        async function playNormalAnimation() {
+            if (isPlayingGreet) return;
+            
+            try {
+                const { model, animations } = await loadModel('../assets/models/character-normal.glb');
+                
+                // 移除旧模型
+                if (currentModel) {
+                    scene.remove(currentModel);
+                }
+                
+                // 添加新模型
+                currentModel = model;
+                scene.add(currentModel);
+                
+                // 设置动画混合器
+                mixer = new THREE.AnimationMixer(currentModel);
+                
+                // 播放动画（循环播放）
+                playAnimation(animations, 0, THREE.LoopRepeat);
+                
+            } catch (error) {
+                console.error('播放普通动画时出错:', error);
+                // 重试
+                setTimeout(playNormalAnimation, 1000);
+            }
+        }
+        
+        // 播放问候动画
+        async function playGreetAnimation() {
+            if (isPlayingGreet) return;
+            
+            isPlayingGreet = true;
+            
+            try {
+                const { model, animations } = await loadModel('../assets/models/character-greet.glb');
+                
+                // 移除旧模型
+                if (currentModel) {
+                    scene.remove(currentModel);
+                }
+                
+                // 添加新模型
+                currentModel = model;
+                scene.add(currentModel);
+                
+                // 设置动画混合器
+                mixer = new THREE.AnimationMixer(currentModel);
+                
+                // 播放动画（只播放一次）
+                const duration = playAnimation(animations, 0, THREE.LoopOnce);
+                
+                // 动画完成后恢复普通动画
+                setTimeout(() => {
+                    isPlayingGreet = false;
+                    playNormalAnimation();
+                }, duration * 1000);
+                
+            } catch (error) {
+                console.error('播放问候动画时出错:', error);
+                isPlayingGreet = false;
+                playNormalAnimation();
+            }
+        }
+        
+        // 添加按钮事件监听
+        document.getElementById('control-btn').addEventListener('click', () => {
+            console.log("按钮点击 - 触发问候动画");
+            playGreetAnimation();
+        });
+        
+        // 开始正常动画循环
+        playNormalAnimation();
+        
+        // 6. 动画循环
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            if (mixer) mixer.update(delta);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        // 7. 响应式处理
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth/window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

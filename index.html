@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Naruto Universe Viewer</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden;
+            background-color: #87cefa;
+            font-family: 'Arial', sans-serif;
+        }
+        canvas { 
+            width: 100%; 
+            height: 100% 
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            pointer-events: none;
+            font-size: 18px;
+        }
+        #loading {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            background-color: rgba(0,0,0,0.5);
+            padding: 5px;
+        }
+        #fullscreenBtn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #fullscreenBtn:hover {
+            background-color: rgba(0,0,0,0.7);
+        }
+        #controls {
+            position: absolute;
+            top: 50px;
+            left: 20px;
+            z-index: 100;
+            background-color: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+        }
+        #viewToggle {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+            display: block;
+        }
+        #characterControls {
+            margin-top: 10px;
+            display: block;
+        }
+        #greetBtn {
+            padding: 8px 16px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #danceBtn {
+            padding: 8px 16px;
+            background-color: #9C27B0;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        #boxingBtn {
+            padding: 8px 16px;
+            background-color: #F44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        /* Chat UI Styles */
+        #chatContainer {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            width: 300px;
+            height: 400px;
+            background-color: rgba(0,0,0,0.7);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+        #chatHistory {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            color: white;
+            font-size: 14px;
+        }
+        #chatInputContainer {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        #chatInput {
+            flex: 1;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background-color: rgba(255,255,255,0.9);
+        }
+        #sendBtn {
+            padding: 8px 12px;
+            margin-left: 5px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .message {
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            max-width: 85%;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background-color: #2196F3;
+            margin-left: auto;
+        }
+        .character-message {
+            background-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Naruto Universe Viewer</div>
+    <div id="loading">Loading...</div>
+    <button id="fullscreenBtn">Fullscreen</button>
+    
+    <div id="controls">
+        <h3>View Controls</h3>
+        <button id="viewToggle">Switch to Hokage Office</button>
+        <div id="characterControls">
+            <button id="greetBtn">Greet</button>
+            <button id="danceBtn">Dance</button>
+            <button id="boxingBtn">Boxing</button>
+        </div>
+    </div>
+    
+    <!-- Chat Container -->
+    <div id="chatContainer">
+        <div id="chatHistory"></div>
+        <div id="chatInputContainer">
+            <input type="text" id="chatInput" placeholder="Talk to the character...">
+            <button id="sendBtn">Send</button>
+        </div>
+    </div>
+    
+    <!-- Include Three.js library -->
+    <script src="hokage-office-project/js/three.min.js"></script>
+    
+    <!-- Include necessary loaders -->
+    <script src="hokage-office-project/js/loaders/FBXLoader.js"></script>
+    <script src="hokage-office-project/js/loaders/GLTFLoader.js"></script>
+    <script src="hokage-office-project/js/loaders/OrbitControls.js"></script>
+    
+    <!-- Required for FBXLoader -->
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/inflate.min.js"></script>
+    
+    <!-- Include axios for API requests -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <script>
+        // Set up the scene, camera, and renderer
+        var scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x336633);
+        
+        var aspect = window.innerWidth / window.innerHeight;
+        var camera = new THREE.PerspectiveCamera(65, aspect, 0.1, 2000);
+        
+        var renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        
+        // Add lighting
+        var directionalLight = new THREE.DirectionalLight(0xffffcc, 1.2);
+        directionalLight.position.set(100, 200, 100);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 500;
+        directionalLight.shadow.bias = -0.0005;
+        scene.add(directionalLight);
+        
+        var secondaryLight = new THREE.DirectionalLight(0xffffcc, 0.7);
+        secondaryLight.position.set(-100, 100, -100);
+        scene.add(secondaryLight);
+        
+        var bottomLight = new THREE.DirectionalLight(0xffffcc, 0.8);
+        bottomLight.position.set(0, -100, 0);
+        bottomLight.castShadow = false;
+        scene.add(bottomLight);
+        
+        var ambientLight = new THREE.AmbientLight(0x555555, 0.8);
+        scene.add(ambientLight);
+        
+        // Add a ground plane
+        var groundGeometry = new THREE.PlaneGeometry(200, 200);
+        var groundTexture = new THREE.TextureLoader().load('hokage-office-project/hokage-office/textures/Ground_Texture.png', function(texture) {
+            texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(10, 10);
+        });
+        var groundMaterial = new THREE.MeshStandardMaterial({
+            color: 0xE6D2B5,
+            map: groundTexture,
+            roughness: 0.9,
+            metalness: 0.1,
+            side: THREE.DoubleSide
+        });
+        var ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.1;
+        ground.receiveShadow = true;
+        scene.add(ground);
+        
+        // Create subtle fog effect
+        scene.fog = new THREE.FogExp2(0x336633, 0.001);
+        
+        // Setup camera position and controls
+        camera.position.set(20, 15, 20);
+        camera.lookAt(0, 10, 0);
+        
+        // Add orbit controls
+        var controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enableZoom = true;
+        controls.zoomSpeed = 1.2;
+        controls.autoRotate = false;
+        controls.maxPolarAngle = Math.PI;
+        controls.minPolarAngle = 0;
+        controls.minDistance = 1;
+        controls.maxDistance = 100;
+        controls.rotateSpeed = 1.2;
+        controls.panSpeed = 1.2;
+        controls.enablePan = true;
+        controls.update();
+        
+        // Create loading manager
+        var loadingManager = new THREE.LoadingManager();
+        loadingManager.onProgress = function(url, itemsLoaded, itemsTotal) {
+            var loadingElement = document.getElementById('loading');
+            loadingElement.textContent = 'Loading: ' + Math.round(itemsLoaded / itemsTotal * 100) + '%';
+        };
+        
+        loadingManager.onLoad = function() {
+            document.getElementById('loading').style.display = 'none';
+            console.log('All resources loaded');
+        };
+        
+        loadingManager.onError = function(url) {
+            console.error('Error loading ' + url);
+            document.getElementById('loading').textContent = 'Error loading ' + url;
+        };
+        
+        // Variables for both models
+        var hokageOffice;
+        var characterModel;
+        var mixer;
+        var currentAction;
+        var isCharacterView = true;
+        var isPlayingGreet = false;
+        var clock = new THREE.Clock();
+        var cloudParticles = [];
+        
+        // Chat variables
+        var chatContext = []; // Store conversation history for context
+        var characterName = "Tobirama"; // Character name
+        
+        // OpenAI API configuration
+        const openaiApiKey = "sk-nqtowru7qRRut0ST1056C083DeEf45958b47Ea8d53C79f87";
+        const openaiBaseUrl = "https://api.gpt.ge/v1/";
+        
+        // Create skybox and clouds
+        function createSkyAndClouds() {
+            // Add subtle clouds using particle system
+            let cloudTexture = new THREE.TextureLoader().load('hokage-office-project/hokage-office/textures/Ground_Texture.png'); // Using ground texture as cloud texture
+            let cloudGeometry = new THREE.PlaneGeometry(50, 50);
+            let cloudMaterial = new THREE.MeshLambertMaterial({
+                map: cloudTexture,
+                transparent: true,
+                opacity: 0.3
+            });
+            
+            // Create a number of clouds at random positions
+            for(let i = 0; i < 20; i++) {
+                let cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
+                cloud.position.set(
+                    Math.random() * 500 - 250,
+                    150 + Math.random() * 50,
+                    Math.random() * 500 - 250
+                );
+                cloud.rotation.x = Math.PI / 2;
+                cloud.rotation.z = Math.random() * Math.PI;
+                cloud.material.opacity = 0.2 + Math.random() * 0.3;
+                cloudParticles.push(cloud);
+                scene.add(cloud);
+            }
+        }
+        
+        // Animate clouds in the scene
+        function animateClouds() {
+            cloudParticles.forEach(cloud => {
+                cloud.position.x -= 0.05;
+                if (cloud.position.x < -250) {
+                    cloud.position.x = 250;
+                }
+            });
+        }
+        
+        // Fix texture paths for FBX loader
+        THREE.Loader.Handlers = THREE.Loader.Handlers || {};
+        THREE.Loader.Handlers.add(/hokage-office\/source\/(.+)\.png$/, function(url) {
+            // Redirect to the correct texture path
+            const textureName = url.split('/').pop();
+            const correctedUrl = 'hokage-office-project/hokage-office/textures/' + textureName;
+            console.log('Redirecting texture:', url, 'to', correctedUrl);
+            return new THREE.TextureLoader(loadingManager).load(correctedUrl);
+        });
+        
+        // Function to apply texture to a mesh
+        function applyTexture(mesh, texturePath) {
+            const textureLoader = new THREE.TextureLoader(loadingManager);
+            
+            // Try loading with primary path
+            textureLoader.load(
+                texturePath,
+                function(texture) {
+                    console.log('Successfully applied texture:', texturePath, 'to mesh:', mesh.name);
+                    applyTextureToMesh(mesh, texture);
+                },
+                // onProgress callback
+                function(xhr) {
+                    console.log('Texture loading progress:', texturePath, Math.round(xhr.loaded / xhr.total * 100) + '%');
+                },
+                // onError callback
+                function(error) {
+                    console.error('Error loading texture:', texturePath, error);
+                    
+                    // Try alternate path format as fallback
+                    const fileName = texturePath.split('/').pop();
+                    const altPath = 'hokage-office-project/hokage-office/textures/' + fileName;
+                    
+                    if (altPath !== texturePath) {
+                        console.log('Trying alternate path:', altPath);
+                        textureLoader.load(
+                            altPath,
+                            function(texture) {
+                                console.log('Successfully applied texture from alternate path:', altPath);
+                                applyTextureToMesh(mesh, texture);
+                            },
+                            undefined,
+                            function(error) {
+                                console.error('Error loading texture from alternate path:', altPath, error);
+                                // Apply default material as last resort
+                                mesh.material = new THREE.MeshPhongMaterial({
+                                    color: 0xDDDDDD,
+                                    shininess: 10,
+                                    side: THREE.DoubleSide
+                                });
+                            }
+                        );
+                    } else {
+                        // Apply default material
+                        mesh.material = new THREE.MeshPhongMaterial({
+                            color: 0xDDDDDD,
+                            shininess: 10,
+                            side: THREE.DoubleSide
+                        });
+                    }
+                }
+            );
+        }
+        
+        // Helper function to apply texture with appropriate settings
+        function applyTextureToMesh(mesh, texture) {
+            // Improve texture quality and appearance
+            texture.encoding = THREE.sRGBEncoding;
+            texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+            
+            // Adjust texture repeats based on mesh type
+            const meshName = mesh.name.toLowerCase();
+            
+            if (meshName.includes('entrance') && meshName.includes('roof') || 
+                meshName.includes('entranceroof') || 
+                meshName === 'roof_entrance') {
+                texture.repeat.set(1, 1);
+                mesh.material = new THREE.MeshPhongMaterial({ 
+                    map: texture,
+                    shininess: 5,
+                    side: THREE.DoubleSide,
+                    bumpScale: 0.1
+                });
+            } else if (meshName.includes('entrance') && meshName.includes('wall') || 
+                      meshName.includes('entrancewall') || 
+                      meshName === 'wall_entrance') {
+                texture.repeat.set(1, 1);
+                mesh.material = new THREE.MeshPhongMaterial({ 
+                    map: texture,
+                    shininess: 10,
+                    side: THREE.DoubleSide
+                });
+            } else if (meshName.includes('ground') || 
+                      meshName === 'floor' || 
+                      meshName === 'terrain') {
+                // Increase repeat for ground texture to avoid stretching
+                texture.repeat.set(5, 5);
+                mesh.material = new THREE.MeshStandardMaterial({ 
+                    map: texture,
+                    roughness: 0.9,
+                    metalness: 0.1,
+                    side: THREE.DoubleSide
+                });
+            } else {
+                // Default material for other meshes
+                mesh.material = new THREE.MeshPhongMaterial({ 
+                    map: texture,
+                    shininess: 10,
+                    side: THREE.DoubleSide
+                });
+            }
+        }
+        
+        // Function to load Hokage Office
+        function loadHokageOffice() {
+            // Clear any character models if present
+            if (characterModel) {
+                scene.remove(characterModel);
+                characterModel = null;
+                if (mixer) {
+                    mixer = null;
+                }
+                if (currentAction) {
+                    currentAction = null;
+                }
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').textContent = 'Loading Hokage Office...';
+            document.getElementById('characterControls').style.display = 'none';
+            document.getElementById('chatContainer').style.display = 'none'; // Hide chat when in office view
+            
+            // Set camera and controls for office view
+            camera.position.set(20, 15, 20);
+            controls.target.set(0, 10, 0);
+            controls.update();
+            
+            // Load the Hokage Office FBX model
+            var fbxLoader = new THREE.FBXLoader(loadingManager);
+            // Override the resource path to look in textures folder
+            fbxLoader.setResourcePath('hokage-office-project/hokage-office/textures/');
+            
+            fbxLoader.load('hokage-office-project/hokage-office/source/Hokage_Office.fbx', function(object) {
+                hokageOffice = object;
+                hokageOffice.scale.set(10, 10, 10);
+                hokageOffice.position.y = 0;
+                
+                // Apply shadows and textures to the model
+                hokageOffice.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        
+                        // Ensure all materials render both sides of faces
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(mat => {
+                                    mat.side = THREE.DoubleSide;
+                                });
+                            } else {
+                                child.material.side = THREE.DoubleSide;
+                            }
+                        }
+                        
+                        // Log mesh names for debugging
+                        console.log('Full mesh name:', child.name);
+                        
+                        // Try to find and apply the texture based on name matching
+                        const meshName = child.name.toLowerCase();
+                        
+                        // Enhanced matching for problematic textures
+                        if ((meshName.includes('entrance') && meshName.includes('roof')) || 
+                            meshName.includes('entranceroof') || 
+                            meshName === 'roof_entrance') {
+                            applyTexture(child, 'hokage-office-project/hokage-office/textures/EntranceRoof_Texture.png');
+                        } else if ((meshName.includes('entrance') && meshName.includes('wall')) || 
+                                  meshName.includes('entrancewall') || 
+                                  meshName === 'wall_entrance') {
+                            applyTexture(child, 'hokage-office-project/hokage-office/textures/EntranceWall_Texture.png');
+                        } else if (meshName.includes('ground') || 
+                                  meshName === 'floor' || 
+                                  meshName === 'terrain') {
+                            applyTexture(child, 'hokage-office-project/hokage-office/textures/Ground_Texture.png');
+                        } else if (meshName.includes('office')) {
+                            applyTexture(child, 'hokage-office-project/hokage-office/textures/Office_TEXTURE.png');
+                        } else if (meshName.includes('pole')) {
+                            applyTexture(child, 'hokage-office-project/hokage-office/textures/Pole_Texture.png');
+                        } else if (meshName.includes('silo')) {
+                            applyTexture(child, 'hokage-office-project/hokage-office/textures/Silo_Texture.png');
+                        } else if (meshName.includes('tree')) {
+                            applyTexture(child, 'hokage-office-project/hokage-office/textures/Tree_texture.png');
+                        } else if (meshName.includes('wall')) {
+                            applyTexture(child, 'hokage-office-project/hokage-office/textures/Wall_Texture.png');
+                        } else {
+                            // For any unmatched meshes, apply a default material
+                            child.material = new THREE.MeshPhongMaterial({
+                                color: 0xDDDDDD,
+                                shininess: 10,
+                                side: THREE.DoubleSide
+                            });
+                        }
+                    }
+                });
+                
+                scene.add(hokageOffice);
+                document.getElementById('loading').style.display = 'none';
+                
+            }, undefined, function(error) {
+                console.error('Error loading Hokage Office model:', error);
+                document.getElementById('loading').textContent = 'Error loading Hokage Office model. Creating fallback.';
+                createFallbackHokageOffice();
+            });
+        }
+        
+        // Function to create fallback Hokage Office
+        function createFallbackHokageOffice() {
+            // Simple building representation
+            var buildingGroup = new THREE.Group();
+            
+            // Main building
+            var mainGeometry = new THREE.BoxGeometry(20, 16, 20);
+            var mainMaterial = new THREE.MeshStandardMaterial({ color: 0xF5DEB3 });
+            var mainBuilding = new THREE.Mesh(mainGeometry, mainMaterial);
+            mainBuilding.position.y = 8;
+            mainBuilding.castShadow = true;
+            mainBuilding.receiveShadow = true;
+            buildingGroup.add(mainBuilding);
+            
+            // Roof
+            var roofGeometry = new THREE.ConeGeometry(16, 8, 4);
+            var roofMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            var roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.y = 20;
+            roof.castShadow = true;
+            roof.receiveShadow = true;
+            buildingGroup.add(roof);
+            
+            hokageOffice = buildingGroup;
+            scene.add(hokageOffice);
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        // Function to load character and play normal animation
+        async function loadCharacter() {
+            // Remove Hokage Office if present
+            if (hokageOffice) {
+                scene.remove(hokageOffice);
+                hokageOffice = null;
+            }
+            
+            // Make sure to clean up any existing character model
+            if (characterModel) {
+                scene.remove(characterModel);
+                characterModel = null;
+            }
+            
+            // Clean up any existing animation mixer
+            if (mixer) {
+                mixer = null;
+            }
+            
+            if (currentAction) {
+                currentAction = null;
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').textContent = 'Loading Character...';
+            document.getElementById('characterControls').style.display = 'block';
+            document.getElementById('chatContainer').style.display = 'flex'; // Show chat when in character view
+            
+            // Set camera and controls for character view
+            camera.position.set(0, 1.5, 4);
+            controls.target.set(0, 1, 0);
+            controls.update();
+            
+            try {
+                // Load the character model
+                var gltfLoader = new THREE.GLTFLoader(loadingManager);
+                gltfLoader.load('tobirama-project/src/normal.glb', function(gltf) {
+                    // If another model was loaded in the meantime, clean it up
+                    if (characterModel) {
+                        scene.remove(characterModel);
+                    }
+                    
+                    characterModel = gltf.scene;
+                    characterModel.position.y = 0;
+                    characterModel.scale.set(1, 1, 1);
+                    
+                    // Apply shadows to the model
+                    characterModel.traverse(function(child) {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    
+                    scene.add(characterModel);
+                    
+                    // Set up animation mixer
+                    mixer = new THREE.AnimationMixer(characterModel);
+                    
+                    // Play the first animation
+                    if (gltf.animations && gltf.animations.length > 0) {
+                        currentAction = mixer.clipAction(gltf.animations[0]);
+                        currentAction.reset();
+                        currentAction.setLoop(THREE.LoopRepeat);
+                        currentAction.play();
+                    }
+                    
+                    document.getElementById('loading').style.display = 'none';
+                });
+            } catch (error) {
+                console.error('Error loading character model:', error);
+                document.getElementById('loading').textContent = 'Error loading character model.';
+            }
+        }
+        
+        // Function to play greeting animation
+        function playGreetAnimation() {
+            if (isPlayingGreet || !characterModel) return;
+            
+            isPlayingGreet = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').textContent = 'Loading Greeting Animation...';
+            
+            // Stop current animation
+            if (currentAction) {
+                currentAction.stop();
+                currentAction = null;
+            }
+            
+            // Clean up the mixer
+            if (mixer) {
+                mixer = null;
+            }
+            
+            // Remove current character
+            if (characterModel) {
+                scene.remove(characterModel);
+                characterModel = null;
+            }
+            
+            // Load greet model and animation
+            var gltfLoader = new THREE.GLTFLoader(loadingManager);
+            gltfLoader.load('tobirama-project/src/greet.glb', function(gltf) {
+                // Check if we switched views while loading
+                if (!isCharacterView) {
+                    isPlayingGreet = false;
+                    return;
+                }
+                
+                // If another model was loaded in the meantime, clean it up
+                if (characterModel) {
+                    scene.remove(characterModel);
+                }
+                
+                characterModel = gltf.scene;
+                characterModel.position.y = 0;
+                characterModel.scale.set(1, 1, 1);
+                
+                // Apply shadows to the model
+                characterModel.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                scene.add(characterModel);
+                
+                // Set up animation mixer
+                mixer = new THREE.AnimationMixer(characterModel);
+                
+                // Play the greeting animation once
+                if (gltf.animations && gltf.animations.length > 0) {
+                    currentAction = mixer.clipAction(gltf.animations[0]);
+                    currentAction.reset();
+                    currentAction.setLoop(THREE.LoopOnce);
+                    currentAction.clampWhenFinished = true;
+                    currentAction.play();
+                    
+                    // Get animation duration
+                    var duration = gltf.animations[0].duration;
+                    
+                    // After animation completes, go back to normal
+                    setTimeout(function() {
+                        // Only switch back if we're still in character view
+                        if (isCharacterView) {
+                            isPlayingGreet = false;
+                            loadCharacter();
+                        }
+                    }, duration * 1000);
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+            });
+        }
+        
+        // Function to play speaking animation
+        function playSpeakingAnimation() {
+            if (isPlayingGreet || !characterModel) return;
+            
+            isPlayingGreet = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').textContent = 'Loading Speaking Animation...';
+            
+            // Stop current animation
+            if (currentAction) {
+                currentAction.stop();
+                currentAction = null;
+            }
+            
+            // Clean up the mixer
+            if (mixer) {
+                mixer = null;
+            }
+            
+            // Remove current character
+            if (characterModel) {
+                scene.remove(characterModel);
+                characterModel = null;
+            }
+            
+            // Load speaking model and animation
+            var gltfLoader = new THREE.GLTFLoader(loadingManager);
+            gltfLoader.load('tobirama-project/src/Speaking.glb', function(gltf) {
+                // Check if we switched views while loading
+                if (!isCharacterView) {
+                    isPlayingGreet = false;
+                    return;
+                }
+                
+                // If another model was loaded in the meantime, clean it up
+                if (characterModel) {
+                    scene.remove(characterModel);
+                }
+                
+                characterModel = gltf.scene;
+                characterModel.position.y = 0;
+                characterModel.scale.set(1, 1, 1);
+                
+                // Apply shadows to the model
+                characterModel.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                scene.add(characterModel);
+                
+                // Set up animation mixer
+                mixer = new THREE.AnimationMixer(characterModel);
+                
+                // Play the speaking animation once
+                if (gltf.animations && gltf.animations.length > 0) {
+                    currentAction = mixer.clipAction(gltf.animations[0]);
+                    currentAction.reset();
+                    currentAction.setLoop(THREE.LoopOnce);
+                    currentAction.clampWhenFinished = true;
+                    currentAction.play();
+                    
+                    // Get animation duration
+                    var duration = gltf.animations[0].duration;
+                    
+                    // After animation completes, go back to normal
+                    setTimeout(function() {
+                        // Only switch back if we're still in character view
+                        if (isCharacterView) {
+                            isPlayingGreet = false;
+                            loadCharacter();
+                        }
+                    }, duration * 1000);
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+            });
+        }
+        
+        // Function to play dance animation
+        function playDanceAnimation() {
+            if (isPlayingGreet || !characterModel) return;
+            
+            isPlayingGreet = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').textContent = 'Loading Dance Animation...';
+            
+            // Stop current animation
+            if (currentAction) {
+                currentAction.stop();
+                currentAction = null;
+            }
+            
+            // Clean up the mixer
+            if (mixer) {
+                mixer = null;
+            }
+            
+            // Remove current character
+            if (characterModel) {
+                scene.remove(characterModel);
+                characterModel = null;
+            }
+            
+            // Load dance model and animation
+            var gltfLoader = new THREE.GLTFLoader(loadingManager);
+            gltfLoader.load('tobirama-project/src/dance.glb', function(gltf) {
+                // Check if we switched views while loading
+                if (!isCharacterView) {
+                    isPlayingGreet = false;
+                    return;
+                }
+                
+                // If another model was loaded in the meantime, clean it up
+                if (characterModel) {
+                    scene.remove(characterModel);
+                }
+                
+                characterModel = gltf.scene;
+                characterModel.position.y = 0;
+                characterModel.scale.set(1, 1, 1);
+                
+                // Apply shadows to the model
+                characterModel.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                scene.add(characterModel);
+                
+                // Set up animation mixer
+                mixer = new THREE.AnimationMixer(characterModel);
+                
+                // Play the dance animation once
+                if (gltf.animations && gltf.animations.length > 0) {
+                    currentAction = mixer.clipAction(gltf.animations[0]);
+                    currentAction.reset();
+                    currentAction.setLoop(THREE.LoopOnce);
+                    currentAction.clampWhenFinished = true;
+                    currentAction.play();
+                    
+                    // Get animation duration
+                    var duration = gltf.animations[0].duration;
+                    
+                    // After animation completes, go back to normal
+                    setTimeout(function() {
+                        // Only switch back if we're still in character view
+                        if (isCharacterView) {
+                            isPlayingGreet = false;
+                            loadCharacter();
+                        }
+                    }, duration * 1000);
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+            });
+        }
+        
+        // Function to play boxing animation
+        function playBoxingAnimation() {
+            if (isPlayingGreet || !characterModel) return;
+            
+            isPlayingGreet = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').textContent = 'Loading Boxing Animation...';
+            
+            // Stop current animation
+            if (currentAction) {
+                currentAction.stop();
+                currentAction = null;
+            }
+            
+            // Clean up the mixer
+            if (mixer) {
+                mixer = null;
+            }
+            
+            // Remove current character
+            if (characterModel) {
+                scene.remove(characterModel);
+                characterModel = null;
+            }
+            
+            // Load boxing model and animation
+            var gltfLoader = new THREE.GLTFLoader(loadingManager);
+            gltfLoader.load('tobirama-project/src/boxing.glb', function(gltf) {
+                // Check if we switched views while loading
+                if (!isCharacterView) {
+                    isPlayingGreet = false;
+                    return;
+                }
+                
+                // If another model was loaded in the meantime, clean it up
+                if (characterModel) {
+                    scene.remove(characterModel);
+                }
+                
+                characterModel = gltf.scene;
+                characterModel.position.y = 0;
+                characterModel.scale.set(1, 1, 1);
+                
+                // Apply shadows to the model
+                characterModel.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                scene.add(characterModel);
+                
+                // Set up animation mixer
+                mixer = new THREE.AnimationMixer(characterModel);
+                
+                // Play the boxing animation once
+                if (gltf.animations && gltf.animations.length > 0) {
+                    currentAction = mixer.clipAction(gltf.animations[0]);
+                    currentAction.reset();
+                    currentAction.setLoop(THREE.LoopOnce);
+                    currentAction.clampWhenFinished = true;
+                    currentAction.play();
+                    
+                    // Get animation duration
+                    var duration = gltf.animations[0].duration;
+                    
+                    // After animation completes, go back to normal
+                    setTimeout(function() {
+                        // Only switch back if we're still in character view
+                        if (isCharacterView) {
+                            isPlayingGreet = false;
+                            loadCharacter();
+                        }
+                    }, duration * 1000);
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+            });
+        }
+        
+        // Function to toggle between views
+        function toggleView() {
+            // Cancel any pending animations
+            if (isPlayingGreet) {
+                isPlayingGreet = false;
+            }
+            
+            isCharacterView = !isCharacterView;
+            var toggleBtn = document.getElementById('viewToggle');
+            
+            if (isCharacterView) {
+                toggleBtn.textContent = "Switch to Hokage Office";
+                loadCharacter();
+            } else {
+                toggleBtn.textContent = "Switch to Character";
+                loadHokageOffice();
+            }
+        }
+        
+        // Chat functionality
+        
+        // Function to send a message to the OpenAI API
+        async function sendMessageToLLM(message) {
+            try {
+                // Show loading indicator
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('loading').textContent = 'Tobirama is thinking...';
+                
+                // Prepare messages array with context for the API
+                let messages = [
+                    {
+                        "role": "system",
+                        "content": `You are ${characterName} 千手扉间 from the Naruto universe. You are the Second Hokage of the Hidden Leaf Village, known for your serious demeanor, intelligence, and water-style jutsu. Respond as this character would, with brief, focused answers that match the character's personality.`
+                    }
+                ];
+                
+                // Add conversation history for context
+                chatContext.forEach(item => {
+                    messages.push(item);
+                });
+                
+                // Add the current user message
+                messages.push({
+                    "role": "user",
+                    "content": message
+                });
+                
+                // Make the API request
+                const response = await axios({
+                    method: 'post',
+                    url: openaiBaseUrl + 'chat/completions',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${openaiApiKey}`,
+                        'x-foo': 'true'
+                    },
+                    data: {
+                        model: 'gpt-3.5-turbo',
+                        messages: messages
+                    }
+                });
+                
+                // Get the response text
+                const responseText = response.data.choices[0].message.content;
+                
+                // Update chat context (store up to 10 messages for context)
+                chatContext.push({ role: "user", content: message });
+                chatContext.push({ role: "assistant", content: responseText });
+                
+                // Keep context size manageable (last 10 messages)
+                if (chatContext.length > 20) {
+                    chatContext = chatContext.slice(chatContext.length - 20);
+                }
+                
+                // Hide loading indicator
+                document.getElementById('loading').style.display = 'none';
+                
+                // Trigger speaking animation for chat responses
+                playSpeakingAnimation();
+                
+                return responseText;
+            } catch (error) {
+                console.error("Error communicating with LLM API:", error);
+                document.getElementById('loading').style.display = 'none';
+                return "I'm having trouble responding right now. Please try again later.";
+            }
+        }
+        
+        // Function to add a message to the chat history
+        function addMessageToChat(message, isUser) {
+            const chatHistory = document.getElementById('chatHistory');
+            const messageElement = document.createElement('div');
+            messageElement.className = isUser ? 'message user-message' : 'message character-message';
+            messageElement.textContent = message;
+            chatHistory.appendChild(messageElement);
+            
+            // Scroll to the bottom to show the newest message
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+        
+        // Function to handle sending a chat message
+        async function handleSendMessage() {
+            const chatInput = document.getElementById('chatInput');
+            const userMessage = chatInput.value.trim();
+            
+            if (userMessage) {
+                // Add user message to chat
+                addMessageToChat(userMessage, true);
+                
+                // Clear input field
+                chatInput.value = '';
+                
+                // Get response from LLM
+                const response = await sendMessageToLLM(userMessage);
+                
+                // Add character response to chat
+                addMessageToChat(response, false);
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('viewToggle').addEventListener('click', toggleView);
+        document.getElementById('greetBtn').addEventListener('click', playGreetAnimation);
+        document.getElementById('danceBtn').addEventListener('click', playDanceAnimation);
+        document.getElementById('boxingBtn').addEventListener('click', playBoxingAnimation);
+        document.getElementById('sendBtn').addEventListener('click', handleSendMessage);
+        
+        // Allow sending message with Enter key
+        document.getElementById('chatInput').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                handleSendMessage();
+            }
+        });
+        
+        // Fullscreen button
+        document.getElementById('fullscreenBtn').addEventListener('click', function() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }, false);
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update controls
+            controls.update();
+            
+            // Update character animations if active
+            if (mixer) {
+                mixer.update(clock.getDelta());
+            }
+            
+            // Animate clouds
+            animateClouds();
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Start animation loop
+        animate();
+        
+        // Create sky and clouds
+        createSkyAndClouds();
+        
+        // Load Character by default
+        loadCharacter();
+    </script>
+</body>
+</html> 
