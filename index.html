@@ -103,6 +103,27 @@
             font-size: 16px;
             margin-top: 10px;
         }
+        #jumpBtn {
+            padding: 8px 16px;
+            background-color: #FF9800;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        #spinBtn {
+            padding: 8px 16px;
+            background-color: #9C27B0;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+            margin-top: 10px;
+        }
         /* Chat UI Styles */
         #chatContainer {
             position: absolute;
@@ -158,6 +179,22 @@
         .character-message {
             background-color: #4CAF50;
         }
+        /* Scene Button Styles */
+        .sceneButton {
+            padding: 8px 16px;
+            background-color: #FF9800;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 5px;
+            display: block;
+            width: 100%;
+        }
+        .sceneButton:hover {
+            background-color: #F57C00;
+        }
     </style>
 </head>
 <body>
@@ -167,11 +204,22 @@
     
     <div id="controls">
         <h3>View Controls</h3>
-        <button id="viewToggle">Switch to Hokage Office</button>
         <div id="characterControls">
             <button id="greetBtn">Greet</button>
             <button id="danceBtn">Dance</button>
             <button id="boxingBtn">Boxing</button>
+            <button id="jumpBtn">Jump</button>
+            <button id="spinBtn">Spin</button>
+        </div>
+        
+        <!-- Added scene controls section -->
+        <div id="sceneControls" style="margin-top: 20px;">
+            <h3>Scene Selection</h3>
+            <button class="sceneButton" onclick="loadScene('Scenes/scene1_HokageRoom.glb')">Hokage Room</button>
+            <button class="sceneButton" onclick="loadScene('Scenes/scene2_NarutoVillage.glb')">Naruto Village</button>
+            <button class="sceneButton" onclick="loadScene('Scenes/scene3_Resort.glb')">Resort</button>
+            <button class="sceneButton" onclick="loadScene('Scenes/scene4_HotSpring.glb')">Hot Spring</button>
+            <button id="returnToCharacterBtn" class="sceneButton" style="margin-top: 15px; background-color: #4CAF50;" onclick="returnToCharacter()">Return to Character</button>
         </div>
     </div>
     
@@ -185,12 +233,12 @@
     </div>
     
     <!-- Include Three.js library -->
-    <script src="hokage-office-project/js/three.min.js"></script>
+    <script src="hokage-office/js/three.min.js"></script>
     
     <!-- Include necessary loaders -->
-    <script src="hokage-office-project/js/loaders/FBXLoader.js"></script>
-    <script src="hokage-office-project/js/loaders/GLTFLoader.js"></script>
-    <script src="hokage-office-project/js/loaders/OrbitControls.js"></script>
+    <script src="hokage-office/js/loaders/FBXLoader.js"></script>
+    <script src="hokage-office/js/loaders/GLTFLoader.js"></script>
+    <script src="hokage-office/js/loaders/OrbitControls.js"></script>
     
     <!-- Required for FBXLoader -->
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.min.js"></script>
@@ -238,7 +286,7 @@
         
         // Add a ground plane
         var groundGeometry = new THREE.PlaneGeometry(200, 200);
-        var groundTexture = new THREE.TextureLoader().load('hokage-office-project/hokage-office/textures/Ground_Texture.png', function(texture) {
+        var groundTexture = new THREE.TextureLoader().load('hokage-office/hokage-office/textures/Ground_Texture.png', function(texture) {
             texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
             texture.repeat.set(10, 10);
         });
@@ -316,7 +364,7 @@
         // Create skybox and clouds
         function createSkyAndClouds() {
             // Add subtle clouds using particle system
-            let cloudTexture = new THREE.TextureLoader().load('hokage-office-project/hokage-office/textures/Ground_Texture.png'); // Using ground texture as cloud texture
+            let cloudTexture = new THREE.TextureLoader().load('hokage-office/hokage-office/textures/Ground_Texture.png'); // Using ground texture as cloud texture
             let cloudGeometry = new THREE.PlaneGeometry(50, 50);
             let cloudMaterial = new THREE.MeshLambertMaterial({
                 map: cloudTexture,
@@ -355,7 +403,7 @@
         THREE.Loader.Handlers.add(/hokage-office\/source\/(.+)\.png$/, function(url) {
             // Redirect to the correct texture path
             const textureName = url.split('/').pop();
-            const correctedUrl = 'hokage-office-project/hokage-office/textures/' + textureName;
+            const correctedUrl = 'hokage-office/hokage-office/textures/' + textureName;
             console.log('Redirecting texture:', url, 'to', correctedUrl);
             return new THREE.TextureLoader(loadingManager).load(correctedUrl);
         });
@@ -381,7 +429,7 @@
                     
                     // Try alternate path format as fallback
                     const fileName = texturePath.split('/').pop();
-                    const altPath = 'hokage-office-project/hokage-office/textures/' + fileName;
+                    const altPath = 'hokage-office/hokage-office/textures/' + fileName;
                     
                     if (altPath !== texturePath) {
                         console.log('Trying alternate path:', altPath);
@@ -490,9 +538,9 @@
             // Load the Hokage Office FBX model
             var fbxLoader = new THREE.FBXLoader(loadingManager);
             // Override the resource path to look in textures folder
-            fbxLoader.setResourcePath('hokage-office-project/hokage-office/textures/');
+            fbxLoader.setResourcePath('hokage-office/hokage-office/textures/');
             
-            fbxLoader.load('hokage-office-project/hokage-office/source/Hokage_Office.fbx', function(object) {
+            fbxLoader.load('hokage-office/hokage-office/source/Hokage_Office.fbx', function(object) {
                 hokageOffice = object;
                 hokageOffice.scale.set(10, 10, 10);
                 hokageOffice.position.y = 0;
@@ -524,25 +572,25 @@
                         if ((meshName.includes('entrance') && meshName.includes('roof')) || 
                             meshName.includes('entranceroof') || 
                             meshName === 'roof_entrance') {
-                            applyTexture(child, 'hokage-office-project/hokage-office/textures/EntranceRoof_Texture.png');
+                            applyTexture(child, 'hokage-office/hokage-office/textures/EntranceRoof_Texture.png');
                         } else if ((meshName.includes('entrance') && meshName.includes('wall')) || 
                                   meshName.includes('entrancewall') || 
                                   meshName === 'wall_entrance') {
-                            applyTexture(child, 'hokage-office-project/hokage-office/textures/EntranceWall_Texture.png');
+                            applyTexture(child, 'hokage-office/hokage-office/textures/EntranceWall_Texture.png');
                         } else if (meshName.includes('ground') || 
                                   meshName === 'floor' || 
                                   meshName === 'terrain') {
-                            applyTexture(child, 'hokage-office-project/hokage-office/textures/Ground_Texture.png');
+                            applyTexture(child, 'hokage-office/hokage-office/textures/Ground_Texture.png');
                         } else if (meshName.includes('office')) {
-                            applyTexture(child, 'hokage-office-project/hokage-office/textures/Office_TEXTURE.png');
+                            applyTexture(child, 'hokage-office/hokage-office/textures/Office_TEXTURE.png');
                         } else if (meshName.includes('pole')) {
-                            applyTexture(child, 'hokage-office-project/hokage-office/textures/Pole_Texture.png');
+                            applyTexture(child, 'hokage-office/hokage-office/textures/Pole_Texture.png');
                         } else if (meshName.includes('silo')) {
-                            applyTexture(child, 'hokage-office-project/hokage-office/textures/Silo_Texture.png');
+                            applyTexture(child, 'hokage-office/hokage-office/textures/Silo_Texture.png');
                         } else if (meshName.includes('tree')) {
-                            applyTexture(child, 'hokage-office-project/hokage-office/textures/Tree_texture.png');
+                            applyTexture(child, 'hokage-office/hokage-office/textures/Tree_texture.png');
                         } else if (meshName.includes('wall')) {
-                            applyTexture(child, 'hokage-office-project/hokage-office/textures/Wall_Texture.png');
+                            applyTexture(child, 'hokage-office/hokage-office/textures/Wall_Texture.png');
                         } else {
                             // For any unmatched meshes, apply a default material
                             child.material = new THREE.MeshPhongMaterial({
@@ -628,7 +676,7 @@
             try {
                 // Load the character model
                 var gltfLoader = new THREE.GLTFLoader(loadingManager);
-                gltfLoader.load('tobirama-project/src/normal.glb', function(gltf) {
+                gltfLoader.load('tobirama/normal.glb', function(gltf) {
                     // If another model was loaded in the meantime, clean it up
                     if (characterModel) {
                         scene.remove(characterModel);
@@ -694,7 +742,7 @@
             
             // Load greet model and animation
             var gltfLoader = new THREE.GLTFLoader(loadingManager);
-            gltfLoader.load('tobirama-project/src/greet.glb', function(gltf) {
+            gltfLoader.load('tobirama/greet.glb', function(gltf) {
                 // Check if we switched views while loading
                 if (!isCharacterView) {
                     isPlayingGreet = false;
@@ -775,7 +823,7 @@
             
             // Load speaking model and animation
             var gltfLoader = new THREE.GLTFLoader(loadingManager);
-            gltfLoader.load('tobirama-project/src/Speaking.glb', function(gltf) {
+            gltfLoader.load('tobirama/Speaking.glb', function(gltf) {
                 // Check if we switched views while loading
                 if (!isCharacterView) {
                     isPlayingGreet = false;
@@ -856,7 +904,7 @@
             
             // Load dance model and animation
             var gltfLoader = new THREE.GLTFLoader(loadingManager);
-            gltfLoader.load('tobirama-project/src/dance.glb', function(gltf) {
+            gltfLoader.load('tobirama/dance.glb', function(gltf) {
                 // Check if we switched views while loading
                 if (!isCharacterView) {
                     isPlayingGreet = false;
@@ -937,7 +985,7 @@
             
             // Load boxing model and animation
             var gltfLoader = new THREE.GLTFLoader(loadingManager);
-            gltfLoader.load('tobirama-project/src/boxing.glb', function(gltf) {
+            gltfLoader.load('tobirama/boxing.glb', function(gltf) {
                 // Check if we switched views while loading
                 if (!isCharacterView) {
                     isPlayingGreet = false;
@@ -991,23 +1039,166 @@
             });
         }
         
-        // Function to toggle between views
-        function toggleView() {
-            // Cancel any pending animations
-            if (isPlayingGreet) {
-                isPlayingGreet = false;
+        // Function to play jump animation
+        function playJumpAnimation() {
+            if (isPlayingGreet || !characterModel) return;
+            
+            isPlayingGreet = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').textContent = 'Loading Jump Animation...';
+            
+            // Stop current animation
+            if (currentAction) {
+                currentAction.stop();
+                currentAction = null;
             }
             
-            isCharacterView = !isCharacterView;
-            var toggleBtn = document.getElementById('viewToggle');
-            
-            if (isCharacterView) {
-                toggleBtn.textContent = "Switch to Hokage Office";
-                loadCharacter();
-            } else {
-                toggleBtn.textContent = "Switch to Character";
-                loadHokageOffice();
+            // Clean up the mixer
+            if (mixer) {
+                mixer = null;
             }
+            
+            // Remove current character
+            if (characterModel) {
+                scene.remove(characterModel);
+                characterModel = null;
+            }
+            
+            // Load jump model and animation
+            var gltfLoader = new THREE.GLTFLoader(loadingManager);
+            gltfLoader.load('tobirama/jump.glb', function(gltf) {
+                // Check if we switched views while loading
+                if (!isCharacterView) {
+                    isPlayingGreet = false;
+                    return;
+                }
+                
+                // If another model was loaded in the meantime, clean it up
+                if (characterModel) {
+                    scene.remove(characterModel);
+                }
+                
+                characterModel = gltf.scene;
+                characterModel.position.y = 0;
+                characterModel.scale.set(1, 1, 1);
+                
+                // Apply shadows to the model
+                characterModel.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                scene.add(characterModel);
+                
+                // Set up animation mixer
+                mixer = new THREE.AnimationMixer(characterModel);
+                
+                // Play the jump animation once
+                if (gltf.animations && gltf.animations.length > 0) {
+                    currentAction = mixer.clipAction(gltf.animations[0]);
+                    currentAction.reset();
+                    currentAction.setLoop(THREE.LoopOnce);
+                    currentAction.clampWhenFinished = true;
+                    currentAction.play();
+                    
+                    // Get animation duration
+                    var duration = gltf.animations[0].duration;
+                    
+                    // After animation completes, go back to normal
+                    setTimeout(function() {
+                        // Only switch back if we're still in character view
+                        if (isCharacterView) {
+                            isPlayingGreet = false;
+                            loadCharacter();
+                        }
+                    }, duration * 1000);
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+            });
+        }
+        
+        // Function to play spin animation
+        function playSpinAnimation() {
+            if (isPlayingGreet || !characterModel) return;
+            
+            isPlayingGreet = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').textContent = 'Loading Spin Animation...';
+            
+            // Stop current animation
+            if (currentAction) {
+                currentAction.stop();
+                currentAction = null;
+            }
+            
+            // Clean up the mixer
+            if (mixer) {
+                mixer = null;
+            }
+            
+            // Remove current character
+            if (characterModel) {
+                scene.remove(characterModel);
+                characterModel = null;
+            }
+            
+            // Load spin model and animation
+            var gltfLoader = new THREE.GLTFLoader(loadingManager);
+            gltfLoader.load('tobirama/spin.glb', function(gltf) {
+                // Check if we switched views while loading
+                if (!isCharacterView) {
+                    isPlayingGreet = false;
+                    return;
+                }
+                
+                // If another model was loaded in the meantime, clean it up
+                if (characterModel) {
+                    scene.remove(characterModel);
+                }
+                
+                characterModel = gltf.scene;
+                characterModel.position.y = 0;
+                characterModel.scale.set(1, 1, 1);
+                
+                // Apply shadows to the model
+                characterModel.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                scene.add(characterModel);
+                
+                // Set up animation mixer
+                mixer = new THREE.AnimationMixer(characterModel);
+                
+                // Play the spin animation once
+                if (gltf.animations && gltf.animations.length > 0) {
+                    currentAction = mixer.clipAction(gltf.animations[0]);
+                    currentAction.reset();
+                    currentAction.setLoop(THREE.LoopOnce);
+                    currentAction.clampWhenFinished = true;
+                    currentAction.play();
+                    
+                    // Get animation duration
+                    var duration = gltf.animations[0].duration;
+                    
+                    // After animation completes, go back to normal
+                    setTimeout(function() {
+                        // Only switch back if we're still in character view
+                        if (isCharacterView) {
+                            isPlayingGreet = false;
+                            loadCharacter();
+                        }
+                    }, duration * 1000);
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+            });
         }
         
         // Chat functionality
@@ -1091,6 +1282,292 @@
             chatHistory.scrollTop = chatHistory.scrollHeight;
         }
         
+        // NLP command processor for interpreting chat messages
+        function processNLPCommands(message) {
+            const lowercaseMsg = message.toLowerCase();
+            let commandExecuted = false;
+            
+            // Character animation commands
+            if (lowercaseMsg.includes('greet') || lowercaseMsg.includes('hello') || lowercaseMsg.includes('hi')) {
+                setTimeout(() => playGreetAnimation(), 500);
+                commandExecuted = true;
+            } else if (lowercaseMsg.includes('dance') || lowercaseMsg.includes('dancing')) {
+                setTimeout(() => playDanceAnimation(), 500);
+                commandExecuted = true;
+            } else if (lowercaseMsg.includes('box') || lowercaseMsg.includes('boxing') || lowercaseMsg.includes('fight')) {
+                setTimeout(() => playBoxingAnimation(), 500);
+                commandExecuted = true;
+            } else if (lowercaseMsg.includes('jump')) {
+                setTimeout(() => playJumpAnimation(), 500);
+                commandExecuted = true;
+            } else if (lowercaseMsg.includes('spin') || lowercaseMsg.includes('turn around')) {
+                setTimeout(() => playSpinAnimation(), 500);
+                commandExecuted = true;
+            }
+            
+            // Scene change commands
+            if (lowercaseMsg.includes('hokage office') || lowercaseMsg.includes('hokage room')) {
+                setTimeout(() => loadScene('Scenes/scene1_HokageRoom.glb'), 500);
+                commandExecuted = true;
+            } else if (lowercaseMsg.includes('village') || lowercaseMsg.includes('naruto village')) {
+                setTimeout(() => loadScene('Scenes/scene2_NarutoVillage.glb'), 500);
+                commandExecuted = true;
+            } else if (lowercaseMsg.includes('resort')) {
+                setTimeout(() => loadScene('Scenes/scene3_Resort.glb'), 500);
+                commandExecuted = true;
+            } else if (lowercaseMsg.includes('hot spring') || lowercaseMsg.includes('onsen')) {
+                setTimeout(() => loadScene('Scenes/scene4_HotSpring.glb'), 500);
+                commandExecuted = true;
+            } else if (lowercaseMsg.includes('character view') || lowercaseMsg.includes('show character')) {
+                setTimeout(() => {
+                    isCharacterView = true;
+                    loadCharacter();
+                }, 500);
+                commandExecuted = true;
+            }
+            
+            // Shader/visual effect commands
+            if (lowercaseMsg.includes('night mode') || lowercaseMsg.includes('dark mode') || lowercaseMsg.includes('make it night')) {
+                applyShaderEffect('night');
+                commandExecuted = true;
+            } else if (lowercaseMsg.includes('day mode') || lowercaseMsg.includes('light mode') || lowercaseMsg.includes('make it day')) {
+                applyShaderEffect('day');
+                commandExecuted = true;
+            } else if (lowercaseMsg.includes('sunset') || lowercaseMsg.includes('orange sky')) {
+                applyShaderEffect('sunset');
+                commandExecuted = true;
+            } else if (lowercaseMsg.includes('rain') || lowercaseMsg.includes('make it rain')) {
+                toggleRainEffect();
+                commandExecuted = true;
+            } else if (lowercaseMsg.includes('snow') || lowercaseMsg.includes('make it snow')) {
+                toggleSnowEffect();
+                commandExecuted = true;
+            } else if (lowercaseMsg.includes('reset effects') || lowercaseMsg.includes('clear effects')) {
+                resetAllEffects();
+                commandExecuted = true;
+            }
+            
+            return commandExecuted;
+        }
+        
+        // Shader and visual effects implementation
+        let currentShaderEffect = 'day';
+        let rainEffect = false;
+        let snowEffect = false;
+        let rainParticles = [];
+        let snowParticles = [];
+        
+        function applyShaderEffect(effectName) {
+            currentShaderEffect = effectName;
+            
+            switch(effectName) {
+                case 'night':
+                    scene.background = new THREE.Color(0x0a1a2a);
+                    scene.fog = new THREE.FogExp2(0x0a1a2a, 0.001);
+                    ambientLight.intensity = 0.2;
+                    directionalLight.intensity = 0.4;
+                    secondaryLight.intensity = 0.2;
+                    bottomLight.intensity = 0.1;
+                    break;
+                case 'day':
+                    scene.background = new THREE.Color(0x336633);
+                    scene.fog = new THREE.FogExp2(0x336633, 0.001);
+                    ambientLight.intensity = 0.8;
+                    directionalLight.intensity = 1.2;
+                    secondaryLight.intensity = 0.7;
+                    bottomLight.intensity = 0.8;
+                    break;
+                case 'sunset':
+                    scene.background = new THREE.Color(0xf77622);
+                    scene.fog = new THREE.FogExp2(0xf77622, 0.001);
+                    ambientLight.intensity = 0.6;
+                    directionalLight.intensity = 1.0;
+                    directionalLight.color.set(0xff9955);
+                    secondaryLight.intensity = 0.5;
+                    secondaryLight.color.set(0xff9955);
+                    bottomLight.intensity = 0.4;
+                    break;
+            }
+        }
+        
+        function toggleRainEffect() {
+            rainEffect = !rainEffect;
+            
+            if (rainEffect) {
+                // Create rain particles
+                createRainEffect();
+            } else {
+                // Remove rain particles
+                removeRainEffect();
+            }
+        }
+        
+        function toggleSnowEffect() {
+            snowEffect = !snowEffect;
+            
+            if (snowEffect) {
+                // Create snow particles
+                createSnowEffect();
+            } else {
+                // Remove snow particles
+                removeSnowEffect();
+            }
+        }
+        
+        function resetAllEffects() {
+            // Reset shaders to default day mode
+            applyShaderEffect('day');
+            
+            // Clear weather effects
+            removeRainEffect();
+            removeSnowEffect();
+            rainEffect = false;
+            snowEffect = false;
+        }
+        
+        function createRainEffect() {
+            const rainGeometry = new THREE.BufferGeometry();
+            const rainCount = 15000;
+            const positions = new Float32Array(rainCount * 3);
+            const velocities = [];
+            
+            for (let i = 0; i < rainCount * 3; i += 3) {
+                // Random positions within a 200x200x200 cube
+                positions[i] = Math.random() * 400 - 200;
+                positions[i+1] = Math.random() * 200 + 50;
+                positions[i+2] = Math.random() * 400 - 200;
+                
+                // Random velocities for varied rain speeds
+                velocities.push({
+                    x: 0,
+                    y: -10 - Math.random() * 10,
+                    z: -3 - Math.random() * 2
+                });
+            }
+            
+            rainGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const rainMaterial = new THREE.PointsMaterial({
+                color: 0xaaaaaa,
+                size: 0.1,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            const rain = new THREE.Points(rainGeometry, rainMaterial);
+            scene.add(rain);
+            
+            rainParticles.push({
+                points: rain,
+                velocities: velocities
+            });
+        }
+        
+        function removeRainEffect() {
+            // Remove all rain particles from the scene
+            rainParticles.forEach(rain => {
+                scene.remove(rain.points);
+            });
+            rainParticles = [];
+        }
+        
+        function createSnowEffect() {
+            const snowGeometry = new THREE.BufferGeometry();
+            const snowCount = 10000;
+            const positions = new Float32Array(snowCount * 3);
+            const velocities = [];
+            
+            for (let i = 0; i < snowCount * 3; i += 3) {
+                // Random positions within a 200x200x200 cube
+                positions[i] = Math.random() * 400 - 200;
+                positions[i+1] = Math.random() * 200 + 50;
+                positions[i+2] = Math.random() * 400 - 200;
+                
+                // Random velocities for varied snow speeds and movement
+                velocities.push({
+                    x: Math.random() * 0.5 - 0.25,
+                    y: -1 - Math.random() * 2,
+                    z: Math.random() * 0.5 - 0.25
+                });
+            }
+            
+            snowGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const snowMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.5,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const snow = new THREE.Points(snowGeometry, snowMaterial);
+            scene.add(snow);
+            
+            snowParticles.push({
+                points: snow,
+                velocities: velocities
+            });
+        }
+        
+        function removeSnowEffect() {
+            // Remove all snow particles from the scene
+            snowParticles.forEach(snow => {
+                scene.remove(snow.points);
+            });
+            snowParticles = [];
+        }
+        
+        function updateWeatherEffects() {
+            // Update rain particles
+            rainParticles.forEach(rain => {
+                const positions = rain.points.geometry.attributes.position.array;
+                
+                for (let i = 0; i < positions.length; i += 3) {
+                    const index = i / 3;
+                    
+                    positions[i] += rain.velocities[index].x;
+                    positions[i+1] += rain.velocities[index].y;
+                    positions[i+2] += rain.velocities[index].z;
+                    
+                    // Reset particles that reach the ground
+                    if (positions[i+1] < -10) {
+                        positions[i] = Math.random() * 400 - 200;
+                        positions[i+1] = 200;
+                        positions[i+2] = Math.random() * 400 - 200;
+                    }
+                }
+                
+                rain.points.geometry.attributes.position.needsUpdate = true;
+            });
+            
+            // Update snow particles
+            snowParticles.forEach(snow => {
+                const positions = snow.points.geometry.attributes.position.array;
+                
+                for (let i = 0; i < positions.length; i += 3) {
+                    const index = i / 3;
+                    
+                    positions[i] += snow.velocities[index].x;
+                    positions[i+1] += snow.velocities[index].y;
+                    positions[i+2] += snow.velocities[index].z;
+                    
+                    // Gentle swaying motion for snow
+                    snow.velocities[index].x += Math.random() * 0.1 - 0.05;
+                    snow.velocities[index].x *= 0.98;
+                    
+                    // Reset particles that reach the ground
+                    if (positions[i+1] < -10) {
+                        positions[i] = Math.random() * 400 - 200;
+                        positions[i+1] = 200;
+                        positions[i+2] = Math.random() * 400 - 200;
+                        snow.velocities[index].x = Math.random() * 0.5 - 0.25;
+                    }
+                }
+                
+                snow.points.geometry.attributes.position.needsUpdate = true;
+            });
+        }
+        
         // Function to handle sending a chat message
         async function handleSendMessage() {
             const chatInput = document.getElementById('chatInput');
@@ -1103,8 +1580,14 @@
                 // Clear input field
                 chatInput.value = '';
                 
+                // Process for NLP commands
+                const commandExecuted = processNLPCommands(userMessage);
+                
                 // Get response from LLM
                 const response = await sendMessageToLLM(userMessage);
+                
+                // Process LLM response for potential command triggers
+                processNLPCommands(response);
                 
                 // Add character response to chat
                 addMessageToChat(response, false);
@@ -1112,10 +1595,11 @@
         }
         
         // Event listeners
-        document.getElementById('viewToggle').addEventListener('click', toggleView);
         document.getElementById('greetBtn').addEventListener('click', playGreetAnimation);
         document.getElementById('danceBtn').addEventListener('click', playDanceAnimation);
         document.getElementById('boxingBtn').addEventListener('click', playBoxingAnimation);
+        document.getElementById('jumpBtn').addEventListener('click', playJumpAnimation);
+        document.getElementById('spinBtn').addEventListener('click', playSpinAnimation);
         document.getElementById('sendBtn').addEventListener('click', handleSendMessage);
         
         // Allow sending message with Enter key
@@ -1158,7 +1642,169 @@
             // Animate clouds
             animateClouds();
             
+            // Update weather effects
+            updateWeatherEffects();
+            
             renderer.render(scene, camera);
+        }
+        
+        // Scene-specific configurations from Scenes.html
+        const sceneConfigurations = {
+            'Scenes/scene1_HokageRoom.glb': {
+                scale: 5,
+                cameraPosition: {
+                    x: 7,
+                    y: 1,
+                    z: 0
+                },
+                cameraTarget: {
+                    x: 0,
+                    y: 1,
+                    z: 0
+                }
+            },
+            'Scenes/scene2_NarutoVillage.glb': {
+                scale: 16,  // Increased scale
+                cameraPosition: {
+                    x: -450,  // Move more to the left
+                    y: -325,  // Maintain vertical position
+                    z: 325    // Adjust to maintain appropriate distance
+                },
+                cameraTarget: {
+                    x: 0,
+                    y: -300,  // Maintain the target point
+                    z: 0
+                }
+            },
+            'Scenes/scene3_Resort.glb': {
+                scale: 16,
+                cameraPosition: {
+                    x: -270,
+                    y: -820,
+                    z: 100
+                },
+                cameraTarget: {
+                    x: -270,
+                    y: -850,
+                    z: 0
+                }
+            },
+            'Scenes/scene4_HotSpring.glb': {
+                scale: 5,
+                cameraPosition: {
+                    x: -35,
+                    y: -5,
+                    z: 0
+                },
+                cameraTarget: {
+                    x: 0,
+                    y: 5,
+                    z: 0
+                }
+            }
+        };
+        
+        // Current GLB scene model
+        let currentGLBModel = null;
+        
+        // Function to load GLB scenes
+        function loadScene(scenePath) {
+            // Remove Hokage Office if present
+            if (hokageOffice) {
+                scene.remove(hokageOffice);
+                hokageOffice = null;
+            }
+            
+            // Remove character if present
+            if (characterModel) {
+                scene.remove(characterModel);
+                characterModel = null;
+                if (mixer) {
+                    mixer = null;
+                }
+                if (currentAction) {
+                    currentAction = null;
+                }
+            }
+            
+            // Remove current GLB model if it exists
+            if (currentGLBModel) {
+                scene.remove(currentGLBModel);
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').textContent = 'Loading Scene...';
+            document.getElementById('characterControls').style.display = 'none';
+            document.getElementById('chatContainer').style.display = 'none';
+            
+            // Load the GLB scene
+            var gltfLoader = new THREE.GLTFLoader(loadingManager);
+            gltfLoader.load(
+                scenePath,
+                (gltf) => {
+                    document.getElementById('loading').textContent = 'Loading complete';
+                    
+                    const model = gltf.scene;
+                    currentGLBModel = model;
+                    scene.add(model);
+                    
+                    // Apply scene-specific configuration
+                    const config = sceneConfigurations[scenePath] || { 
+                        scale: 5,
+                        cameraPosition: { x: 0, y: 1, z: 3 },
+                        cameraTarget: { x: 0, y: 1, z: 0 }
+                    };
+                    
+                    // Apply custom scale
+                    model.scale.set(config.scale, config.scale, config.scale);
+                    
+                    // Get model bounding box for reference
+                    const box = new THREE.Box3().expandByObject(model);
+                    const center = box.getCenter(new THREE.Vector3());
+                    
+                    // Set camera position based on configuration
+                    camera.position.set(
+                        center.x + config.cameraPosition.x,
+                        center.y + config.cameraPosition.y,
+                        center.z + config.cameraPosition.z
+                    );
+                    
+                    // Set camera target
+                    controls.target.set(
+                        center.x + config.cameraTarget.x,
+                        center.y + config.cameraTarget.y,
+                        center.z + config.cameraTarget.z
+                    );
+                    
+                    controls.update();
+                    document.getElementById('loading').style.display = 'none';
+                },
+                undefined,
+                (error) => {
+                    console.error('Loading failed:', error);
+                    document.getElementById('loading').textContent = 'Loading failed: ' + error.message;
+                }
+            );
+            
+            // Update character view state
+            isCharacterView = false;
+        }
+        
+        // Function to return to character view
+        function returnToCharacter() {
+            // Cancel any pending animations
+            if (isPlayingGreet) {
+                isPlayingGreet = false;
+            }
+            
+            // Remove GLB scene if present
+            if (currentGLBModel) {
+                scene.remove(currentGLBModel);
+                currentGLBModel = null;
+            }
+            
+            isCharacterView = true;
+            loadCharacter();
         }
         
         // Start animation loop
