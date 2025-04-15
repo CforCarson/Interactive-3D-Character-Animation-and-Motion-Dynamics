@@ -262,27 +262,48 @@
         document.body.appendChild(renderer.domElement);
         
         // Add lighting
-        var directionalLight = new THREE.DirectionalLight(0xffffcc, 1.2);
-        directionalLight.position.set(100, 200, 100);
+        var directionalLight = new THREE.DirectionalLight(0xfcf8e5, 1.0);
+        directionalLight.position.set(50, 100, 50);
         directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.mapSize.width = 4096;  // Higher resolution shadows
+        directionalLight.shadow.mapSize.height = 4096;
         directionalLight.shadow.camera.near = 0.5;
         directionalLight.shadow.camera.far = 500;
-        directionalLight.shadow.bias = -0.0005;
+        directionalLight.shadow.bias = -0.0008;  // Adjusted bias for better shadows
+        directionalLight.shadow.normalBias = 0.02;  // Add normal bias to prevent shadow acne
+
+        // Improve shadow camera frustum to better cover scene
+        directionalLight.shadow.camera.left = -100;
+        directionalLight.shadow.camera.right = 100;
+        directionalLight.shadow.camera.top = 100;
+        directionalLight.shadow.camera.bottom = -100;
         scene.add(directionalLight);
         
-        var secondaryLight = new THREE.DirectionalLight(0xffffcc, 0.7);
-        secondaryLight.position.set(-100, 100, -100);
+        // Add a hemisphere light for more natural ambient lighting
+        var hemiLight = new THREE.HemisphereLight(0xfcf8e5, 0x080820, 0.5);
+        hemiLight.position.set(0, 50, 0);
+        scene.add(hemiLight);
+        
+        var secondaryLight = new THREE.DirectionalLight(0xd1e0ff, 0.5);  // Cooler tint for fill light
+        secondaryLight.position.set(-80, 60, -50);
         scene.add(secondaryLight);
         
-        var bottomLight = new THREE.DirectionalLight(0xffffcc, 0.8);
-        bottomLight.position.set(0, -100, 0);
+        var bottomLight = new THREE.DirectionalLight(0xffffeb, 0.3);  // Reduced intensity
+        bottomLight.position.set(0, -60, 0);
         bottomLight.castShadow = false;
         scene.add(bottomLight);
         
-        var ambientLight = new THREE.AmbientLight(0x555555, 0.8);
+        // Remove the old ambient light as hemisphere light replaces it
+        // var ambientLight = new THREE.AmbientLight(0x555555, 0.8);
+        // Use a much subtler ambient light in addition to hemisphere
+        var ambientLight = new THREE.AmbientLight(0x222222, 0.3);
         scene.add(ambientLight);
+
+        // Enable physically correct lighting model
+        renderer.physicallyCorrectLights = true;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
         
         // Add a ground plane
         var groundGeometry = new THREE.PlaneGeometry(200, 200);
@@ -301,6 +322,19 @@
         ground.rotation.x = -Math.PI / 2;
         ground.position.y = -0.1;
         ground.receiveShadow = true;
+        
+        // Add a second shadow-catching plane just for character mode
+        // This will be invisible but will catch shadows better
+        var shadowGroundGeometry = new THREE.PlaneGeometry(10, 10);
+        var shadowGroundMaterial = new THREE.ShadowMaterial({
+            opacity: 0.5
+        });
+        var shadowGround = new THREE.Mesh(shadowGroundGeometry, shadowGroundMaterial);
+        shadowGround.rotation.x = -Math.PI / 2;
+        shadowGround.position.y = -0.09; // Slightly above the main ground
+        shadowGround.receiveShadow = true;
+        scene.add(shadowGround);
+        
         scene.add(ground);
         
         // Create subtle fog effect
@@ -320,7 +354,7 @@
         controls.maxPolarAngle = Math.PI;
         controls.minPolarAngle = 0;
         controls.minDistance = 1;
-        controls.maxDistance = 100;
+        controls.maxDistance = 1000;
         controls.rotateSpeed = 1.2;
         controls.panSpeed = 1.2;
         controls.enablePan = true;
@@ -511,6 +545,28 @@
             }
         }
         
+        // Function to update the shadow ground visibility and position
+        function updateShadowGround(isCharView, position) {
+            if (shadowGround) {
+                if (isCharView) {
+                    shadowGround.visible = true;
+                    
+                    if (position) {
+                        // Position the shadow ground under the character
+                        shadowGround.position.x = position.x;
+                        shadowGround.position.z = position.z;
+                    } else {
+                        // Default character position when no position is provided
+                        shadowGround.position.x = 0;
+                        shadowGround.position.z = 0;
+                    }
+                } else {
+                    // Hide shadow ground in scene views
+                    shadowGround.visible = false;
+                }
+            }
+        }
+        
         // Function to load Hokage Office
         function loadHokageOffice() {
             // Clear any character models if present
@@ -524,6 +580,9 @@
                     currentAction = null;
                 }
             }
+            
+            // Update shadow ground
+            updateShadowGround(false);
             
             document.getElementById('loading').style.display = 'block';
             document.getElementById('loading').textContent = 'Loading Hokage Office...';
@@ -673,6 +732,24 @@
             controls.target.set(0, 1, 0);
             controls.update();
             
+            // Ensure the ground is visible and receiving shadows
+            if (ground) {
+                ground.visible = true;
+                ground.receiveShadow = true;
+            }
+            
+            // Update shadow ground for character view
+            updateShadowGround(true);
+            
+            // Reset directional light position for character view
+            directionalLight.position.set(2, 4, 3);
+            directionalLight.shadow.camera.left = -5;
+            directionalLight.shadow.camera.right = 5;
+            directionalLight.shadow.camera.top = 5;
+            directionalLight.shadow.camera.bottom = -5;
+            directionalLight.shadow.bias = -0.0005;
+            directionalLight.shadow.camera.updateProjectionMatrix();
+            
             try {
                 // Load the character model
                 var gltfLoader = new THREE.GLTFLoader(loadingManager);
@@ -691,6 +768,17 @@
                         if (child.isMesh) {
                             child.castShadow = true;
                             child.receiveShadow = true;
+                            
+                            // Improve shadow quality on character materials
+                            if (child.material) {
+                                if (Array.isArray(child.material)) {
+                                    child.material.forEach(mat => {
+                                        mat.shadowSide = THREE.FrontSide;
+                                    });
+                                } else {
+                                    child.material.shadowSide = THREE.FrontSide;
+                                }
+                            }
                         }
                     });
                     
@@ -722,6 +810,11 @@
             isPlayingGreet = true;
             document.getElementById('loading').style.display = 'block';
             document.getElementById('loading').textContent = 'Loading Greeting Animation...';
+            
+            // Store current position, rotation and scale
+            const currentPosition = characterModel.position.clone();
+            const currentRotation = characterModel.rotation.clone();
+            const currentScale = characterModel.scale.clone();
             
             // Stop current animation
             if (currentAction) {
@@ -755,8 +848,11 @@
                 }
                 
                 characterModel = gltf.scene;
-                characterModel.position.y = 0;
-                characterModel.scale.set(1, 1, 1);
+                
+                // Apply stored position, rotation and scale
+                characterModel.position.copy(currentPosition);
+                characterModel.rotation.copy(currentRotation);
+                characterModel.scale.copy(currentScale);
                 
                 // Apply shadows to the model
                 characterModel.traverse(function(child) {
@@ -787,7 +883,9 @@
                         // Only switch back if we're still in character view
                         if (isCharacterView) {
                             isPlayingGreet = false;
-                            loadCharacter();
+                            
+                            // Load character but preserve position, rotation and scale
+                            reloadCharacterWithPreservedTransform(currentPosition, currentRotation, currentScale);
                         }
                     }, duration * 1000);
                 }
@@ -803,6 +901,11 @@
             isPlayingGreet = true;
             document.getElementById('loading').style.display = 'block';
             document.getElementById('loading').textContent = 'Loading Speaking Animation...';
+            
+            // Store current position, rotation and scale
+            const currentPosition = characterModel.position.clone();
+            const currentRotation = characterModel.rotation.clone();
+            const currentScale = characterModel.scale.clone();
             
             // Stop current animation
             if (currentAction) {
@@ -836,8 +939,11 @@
                 }
                 
                 characterModel = gltf.scene;
-                characterModel.position.y = 0;
-                characterModel.scale.set(1, 1, 1);
+                
+                // Apply stored position, rotation and scale
+                characterModel.position.copy(currentPosition);
+                characterModel.rotation.copy(currentRotation);
+                characterModel.scale.copy(currentScale);
                 
                 // Apply shadows to the model
                 characterModel.traverse(function(child) {
@@ -868,7 +974,9 @@
                         // Only switch back if we're still in character view
                         if (isCharacterView) {
                             isPlayingGreet = false;
-                            loadCharacter();
+                            
+                            // Load character but preserve position, rotation and scale
+                            reloadCharacterWithPreservedTransform(currentPosition, currentRotation, currentScale);
                         }
                     }, duration * 1000);
                 }
@@ -884,6 +992,11 @@
             isPlayingGreet = true;
             document.getElementById('loading').style.display = 'block';
             document.getElementById('loading').textContent = 'Loading Dance Animation...';
+            
+            // Store current position, rotation and scale
+            const currentPosition = characterModel.position.clone();
+            const currentRotation = characterModel.rotation.clone();
+            const currentScale = characterModel.scale.clone();
             
             // Stop current animation
             if (currentAction) {
@@ -917,8 +1030,11 @@
                 }
                 
                 characterModel = gltf.scene;
-                characterModel.position.y = 0;
-                characterModel.scale.set(1, 1, 1);
+                
+                // Apply stored position, rotation and scale
+                characterModel.position.copy(currentPosition);
+                characterModel.rotation.copy(currentRotation);
+                characterModel.scale.copy(currentScale);
                 
                 // Apply shadows to the model
                 characterModel.traverse(function(child) {
@@ -949,7 +1065,9 @@
                         // Only switch back if we're still in character view
                         if (isCharacterView) {
                             isPlayingGreet = false;
-                            loadCharacter();
+                            
+                            // Load character but preserve position, rotation and scale
+                            reloadCharacterWithPreservedTransform(currentPosition, currentRotation, currentScale);
                         }
                     }, duration * 1000);
                 }
@@ -965,6 +1083,11 @@
             isPlayingGreet = true;
             document.getElementById('loading').style.display = 'block';
             document.getElementById('loading').textContent = 'Loading Boxing Animation...';
+            
+            // Store current position, rotation and scale
+            const currentPosition = characterModel.position.clone();
+            const currentRotation = characterModel.rotation.clone();
+            const currentScale = characterModel.scale.clone();
             
             // Stop current animation
             if (currentAction) {
@@ -998,8 +1121,11 @@
                 }
                 
                 characterModel = gltf.scene;
-                characterModel.position.y = 0;
-                characterModel.scale.set(1, 1, 1);
+                
+                // Apply stored position, rotation and scale
+                characterModel.position.copy(currentPosition);
+                characterModel.rotation.copy(currentRotation);
+                characterModel.scale.copy(currentScale);
                 
                 // Apply shadows to the model
                 characterModel.traverse(function(child) {
@@ -1030,7 +1156,9 @@
                         // Only switch back if we're still in character view
                         if (isCharacterView) {
                             isPlayingGreet = false;
-                            loadCharacter();
+                            
+                            // Load character but preserve position, rotation and scale
+                            reloadCharacterWithPreservedTransform(currentPosition, currentRotation, currentScale);
                         }
                     }, duration * 1000);
                 }
@@ -1046,6 +1174,11 @@
             isPlayingGreet = true;
             document.getElementById('loading').style.display = 'block';
             document.getElementById('loading').textContent = 'Loading Jump Animation...';
+            
+            // Store current position, rotation and scale
+            const currentPosition = characterModel.position.clone();
+            const currentRotation = characterModel.rotation.clone();
+            const currentScale = characterModel.scale.clone();
             
             // Stop current animation
             if (currentAction) {
@@ -1079,8 +1212,11 @@
                 }
                 
                 characterModel = gltf.scene;
-                characterModel.position.y = 0;
-                characterModel.scale.set(1, 1, 1);
+                
+                // Apply stored position, rotation and scale
+                characterModel.position.copy(currentPosition);
+                characterModel.rotation.copy(currentRotation);
+                characterModel.scale.copy(currentScale);
                 
                 // Apply shadows to the model
                 characterModel.traverse(function(child) {
@@ -1111,7 +1247,9 @@
                         // Only switch back if we're still in character view
                         if (isCharacterView) {
                             isPlayingGreet = false;
-                            loadCharacter();
+                            
+                            // Load character but preserve position, rotation and scale
+                            reloadCharacterWithPreservedTransform(currentPosition, currentRotation, currentScale);
                         }
                     }, duration * 1000);
                 }
@@ -1127,6 +1265,11 @@
             isPlayingGreet = true;
             document.getElementById('loading').style.display = 'block';
             document.getElementById('loading').textContent = 'Loading Spin Animation...';
+            
+            // Store current position, rotation and scale
+            const currentPosition = characterModel.position.clone();
+            const currentRotation = characterModel.rotation.clone();
+            const currentScale = characterModel.scale.clone();
             
             // Stop current animation
             if (currentAction) {
@@ -1160,8 +1303,11 @@
                 }
                 
                 characterModel = gltf.scene;
-                characterModel.position.y = 0;
-                characterModel.scale.set(1, 1, 1);
+                
+                // Apply stored position, rotation and scale
+                characterModel.position.copy(currentPosition);
+                characterModel.rotation.copy(currentRotation);
+                characterModel.scale.copy(currentScale);
                 
                 // Apply shadows to the model
                 characterModel.traverse(function(child) {
@@ -1192,9 +1338,66 @@
                         // Only switch back if we're still in character view
                         if (isCharacterView) {
                             isPlayingGreet = false;
-                            loadCharacter();
+                            
+                            // Load character but preserve position, rotation and scale
+                            reloadCharacterWithPreservedTransform(currentPosition, currentRotation, currentScale);
                         }
                     }, duration * 1000);
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+            });
+        }
+        
+        // Function to reload character but preserve position, rotation and scale
+        function reloadCharacterWithPreservedTransform(position, rotation, scale) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').textContent = 'Loading Character...';
+            
+            // Clean up any existing animation
+            if (currentAction) {
+                currentAction.stop();
+                currentAction = null;
+            }
+            if (mixer) {
+                mixer = null;
+            }
+            
+            // Remove current character
+            if (characterModel) {
+                scene.remove(characterModel);
+                characterModel = null;
+            }
+            
+            // Load character again but apply stored transforms
+            var gltfLoader = new THREE.GLTFLoader(loadingManager);
+            gltfLoader.load('tobirama/normal.glb', function(gltf) {
+                characterModel = gltf.scene;
+                
+                // Apply saved position, rotation and scale
+                characterModel.position.copy(position);
+                characterModel.rotation.copy(rotation);
+                characterModel.scale.copy(scale);
+                
+                // Apply shadows to the model
+                characterModel.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                scene.add(characterModel);
+                
+                // Set up animation mixer
+                mixer = new THREE.AnimationMixer(characterModel);
+                
+                // Play the default animation
+                if (gltf.animations && gltf.animations.length > 0) {
+                    currentAction = mixer.clipAction(gltf.animations[0]);
+                    currentAction.reset();
+                    currentAction.setLoop(THREE.LoopRepeat);
+                    currentAction.play();
                 }
                 
                 document.getElementById('loading').style.display = 'none';
@@ -1364,28 +1567,43 @@
                 case 'night':
                     scene.background = new THREE.Color(0x0a1a2a);
                     scene.fog = new THREE.FogExp2(0x0a1a2a, 0.001);
-                    ambientLight.intensity = 0.2;
-                    directionalLight.intensity = 0.4;
-                    secondaryLight.intensity = 0.2;
-                    bottomLight.intensity = 0.1;
+                    ambientLight.intensity = 0.15;
+                    hemiLight.intensity = 0.1;
+                    hemiLight.groundColor.set(0x0a1a2a);
+                    directionalLight.intensity = 0.2;
+                    directionalLight.color.set(0xadc8ff); // Moonlight blue
+                    secondaryLight.intensity = 0.1;
+                    secondaryLight.color.set(0x8595bb);
+                    bottomLight.intensity = 0.05;
+                    renderer.toneMappingExposure = 0.8;
                     break;
                 case 'day':
                     scene.background = new THREE.Color(0x336633);
                     scene.fog = new THREE.FogExp2(0x336633, 0.001);
-                    ambientLight.intensity = 0.8;
-                    directionalLight.intensity = 1.2;
-                    secondaryLight.intensity = 0.7;
-                    bottomLight.intensity = 0.8;
+                    ambientLight.intensity = 0.3;
+                    hemiLight.intensity = 0.5;
+                    hemiLight.groundColor.set(0x080820);
+                    hemiLight.skyColor.set(0xfcf8e5);
+                    directionalLight.intensity = 1.0;
+                    directionalLight.color.set(0xfcf8e5);
+                    secondaryLight.intensity = 0.5;
+                    secondaryLight.color.set(0xd1e0ff);
+                    bottomLight.intensity = 0.3;
+                    renderer.toneMappingExposure = 1.0;
                     break;
                 case 'sunset':
                     scene.background = new THREE.Color(0xf77622);
                     scene.fog = new THREE.FogExp2(0xf77622, 0.001);
-                    ambientLight.intensity = 0.6;
-                    directionalLight.intensity = 1.0;
+                    ambientLight.intensity = 0.2;
+                    hemiLight.intensity = 0.4;
+                    hemiLight.groundColor.set(0x553311);
+                    hemiLight.skyColor.set(0xffaa55);
+                    directionalLight.intensity = 1.1;
                     directionalLight.color.set(0xff9955);
-                    secondaryLight.intensity = 0.5;
+                    secondaryLight.intensity = 0.3;
                     secondaryLight.color.set(0xff9955);
-                    bottomLight.intensity = 0.4;
+                    bottomLight.intensity = 0.2;
+                    renderer.toneMappingExposure = 1.1;
                     break;
             }
         }
@@ -1639,6 +1857,13 @@
                 mixer.update(clock.getDelta());
             }
             
+            // Keep shadow ground aligned with character if visible
+            if (shadowGround && shadowGround.visible && characterModel) {
+                // Only update X and Z to keep Y at the ground level
+                shadowGround.position.x = characterModel.position.x;
+                shadowGround.position.z = characterModel.position.z;
+            }
+            
             // Animate clouds
             animateClouds();
             
@@ -1651,6 +1876,7 @@
         // Scene-specific configurations from Scenes.html
         const sceneConfigurations = {
             'Scenes/scene1_HokageRoom.glb': {
+                sceneName: "HokageRoom",
                 scale: 5,
                 cameraPosition: {
                     x: 7,
@@ -1664,19 +1890,21 @@
                 }
             },
             'Scenes/scene2_NarutoVillage.glb': {
-                scale: 16,  // Increased scale
+                sceneName: "NarutoVillage",
+                scale: 0.8,  // Increased scale
                 cameraPosition: {
-                    x: -450,  // Move more to the left
-                    y: -325,  // Maintain vertical position
-                    z: 325    // Adjust to maintain appropriate distance
+                    x: -45,  // Left or right
+                    y: -30,  // vertical position
+                    z: 32.5    // distance
                 },
                 cameraTarget: {
                     x: 0,
-                    y: -300,  // Maintain the target point
+                    y: -30,
                     z: 0
                 }
             },
             'Scenes/scene3_Resort.glb': {
+                sceneName: "Resort",
                 scale: 16,
                 cameraPosition: {
                     x: -270,
@@ -1690,15 +1918,16 @@
                 }
             },
             'Scenes/scene4_HotSpring.glb': {
+                sceneName: "HotSpring",
                 scale: 5,
                 cameraPosition: {
                     x: -35,
-                    y: -5,
-                    z: 0
+                    y: -7,
+                    z: 5
                 },
                 cameraTarget: {
                     x: 0,
-                    y: 5,
+                    y: 2,
                     z: 0
                 }
             }
@@ -1715,18 +1944,6 @@
                 hokageOffice = null;
             }
             
-            // Remove character if present
-            if (characterModel) {
-                scene.remove(characterModel);
-                characterModel = null;
-                if (mixer) {
-                    mixer = null;
-                }
-                if (currentAction) {
-                    currentAction = null;
-                }
-            }
-            
             // Remove current GLB model if it exists
             if (currentGLBModel) {
                 scene.remove(currentGLBModel);
@@ -1734,8 +1951,10 @@
             
             document.getElementById('loading').style.display = 'block';
             document.getElementById('loading').textContent = 'Loading Scene...';
-            document.getElementById('characterControls').style.display = 'none';
-            document.getElementById('chatContainer').style.display = 'none';
+            
+            // Keep character controls and chat visible in scene
+            document.getElementById('characterControls').style.display = 'block';
+            document.getElementById('chatContainer').style.display = 'flex';
             
             // Load the GLB scene
             var gltfLoader = new THREE.GLTFLoader(loadingManager);
@@ -1746,6 +1965,15 @@
                     
                     const model = gltf.scene;
                     currentGLBModel = model;
+                    
+                    // Ensure all meshes in the scene cast and receive shadows
+                    model.traverse(function(child) {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    
                     scene.add(model);
                     
                     // Apply scene-specific configuration
@@ -1761,6 +1989,29 @@
                     // Get model bounding box for reference
                     const box = new THREE.Box3().expandByObject(model);
                     const center = box.getCenter(new THREE.Vector3());
+                    
+                    // Adjust directional light position based on scene size and center
+                    directionalLight.position.set(
+                        center.x + 100,
+                        center.y + 200,
+                        center.z + 100
+                    );
+                    
+                    // Adjust shadow camera to match scene scale
+                    const sceneSize = box.getSize(new THREE.Vector3());
+                    const maxSize = Math.max(sceneSize.x, sceneSize.y, sceneSize.z) * config.scale;
+                    
+                    directionalLight.shadow.camera.left = -maxSize * 0.5;
+                    directionalLight.shadow.camera.right = maxSize * 0.5;
+                    directionalLight.shadow.camera.top = maxSize * 0.5;
+                    directionalLight.shadow.camera.bottom = -maxSize * 0.5;
+                    directionalLight.shadow.camera.far = maxSize * 2;
+                    
+                    // Adjust shadow bias based on scene scale
+                    directionalLight.shadow.bias = -0.0005 / config.scale;
+                    
+                    // Update the shadow camera
+                    directionalLight.shadow.camera.updateProjectionMatrix();
                     
                     // Set camera position based on configuration
                     camera.position.set(
@@ -1778,6 +2029,14 @@
                     
                     controls.update();
                     document.getElementById('loading').style.display = 'none';
+                    
+                    // If character is not already present, load it into the scene
+                    if (!characterModel) {
+                        loadCharacterIntoScene(center, config);
+                    } else {
+                        // Position existing character in the scene
+                        positionCharacterInScene(center, config);
+                    }
                 },
                 undefined,
                 (error) => {
@@ -1786,8 +2045,104 @@
                 }
             );
             
-            // Update character view state
-            isCharacterView = false;
+            // We're still in character view even when in a scene
+            isCharacterView = true;
+            
+            // Update shadow ground
+            updateShadowGround(false);
+        }
+        
+        // Function to position character in a scene
+        function positionCharacterInScene(sceneCenter, config) {
+            if (!characterModel) return;
+            
+            // Position character based on scene type
+            const sceneName = config.sceneName || "";
+            
+            if (sceneName.includes("HokageRoom")) {
+                characterModel.scale.set(5, 5, 5);
+                // Position in front of the desk
+                characterModel.position.set(sceneCenter.x - 25, sceneCenter.y - 9, sceneCenter.z - 0);
+                // Fix character facing 90 degrees left by rotating 270 degrees clockwise
+                characterModel.rotation.set(0, Math.PI * 0.5, 0);
+            } else if (sceneName.includes("NarutoVillage")) {
+                characterModel.scale.set(4, 4, 4);
+                // Position on the street
+                characterModel.position.set(sceneCenter.x - 35, sceneCenter.y - 34.5, sceneCenter.z + 20);
+                // Fix character facing 45 degrees right by rotating 315 degrees clockwise
+                characterModel.rotation.set(0, Math.PI * 1.75, 0); // Rotate 315 degrees around Y axis
+            } else if (sceneName.includes("Resort")) {
+                characterModel.scale.set(12.5, 12.5, 12.5);
+                // Position near the resort entrance
+                characterModel.position.set(sceneCenter.x - 270, sceneCenter.y - 844.25, sceneCenter.z + 50);
+                // Set default forward orientation
+                characterModel.rotation.set(0, 0, 0);
+            } else if (sceneName.includes("HotSpring")) {
+                characterModel.scale.set(4, 4, 4);
+                // Position near the hot spring
+                characterModel.position.set(sceneCenter.x - 20, sceneCenter.y - 9.75, sceneCenter.z);
+                // Fix character facing 90 degrees right by rotating 270 degrees counter-clockwise
+                characterModel.rotation.set(0, -Math.PI / 2, 0); // Rotate 270 degrees counter-clockwise around Y axis
+            } else {
+                // Default positioning relative to scene center
+                characterModel.position.set(sceneCenter.x, sceneCenter.y, sceneCenter.z);
+                // Default forward orientation
+                characterModel.rotation.set(0, 0, 0);
+            }
+            
+            // Update shadow ground to match character position in the scene
+            updateShadowGround(true, characterModel.position);
+            
+            // Ensure the character has proper shadow settings
+            characterModel.traverse(function(child) {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+        }
+        
+        // Function to load character into a scene
+        function loadCharacterIntoScene(sceneCenter, config) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').textContent = 'Loading Character into Scene...';
+            
+            // Load the character model
+            var gltfLoader = new THREE.GLTFLoader(loadingManager);
+            gltfLoader.load('tobirama/normal.glb', function(gltf) {
+                // If another model was loaded in the meantime, clean it up
+                if (characterModel) {
+                    scene.remove(characterModel);
+                }
+                
+                characterModel = gltf.scene;
+                
+                // Position character in the scene
+                positionCharacterInScene(sceneCenter, config);
+                
+                // Apply shadows to the model
+                characterModel.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                scene.add(characterModel);
+                
+                // Set up animation mixer
+                mixer = new THREE.AnimationMixer(characterModel);
+                
+                // Play the first animation
+                if (gltf.animations && gltf.animations.length > 0) {
+                    currentAction = mixer.clipAction(gltf.animations[0]);
+                    currentAction.reset();
+                    currentAction.setLoop(THREE.LoopRepeat);
+                    currentAction.play();
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+            });
         }
         
         // Function to return to character view
@@ -1804,7 +2159,7 @@
             }
             
             isCharacterView = true;
-            loadCharacter();
+            loadCharacter(); // Load character in default environment
         }
         
         // Start animation loop
