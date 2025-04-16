@@ -24,11 +24,31 @@ const UI = (function() {
             }
         });
         
+        // Speech toggle
+        document.getElementById('toggleSpeechBtn').addEventListener('click', toggleSpeech);
+        
         // Fullscreen button
         document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
         
         // Add window resize handler
         window.addEventListener('resize', handleResize);
+    }
+    
+    // Toggle speech on/off
+    function toggleSpeech() {
+        const isSpeechEnabled = Chat.toggleSpeech();
+        const speechIcon = document.getElementById('speechIcon');
+        const toggleBtn = document.getElementById('toggleSpeechBtn');
+        
+        if (isSpeechEnabled) {
+            speechIcon.textContent = '🔊';
+            toggleBtn.style.backgroundColor = '#4CAF50';
+            toggleBtn.title = 'Disable Speech';
+        } else {
+            speechIcon.textContent = '🔇';
+            toggleBtn.style.backgroundColor = '#F44336';
+            toggleBtn.title = 'Enable Speech';
+        }
     }
     
     // Toggle fullscreen mode
@@ -92,6 +112,7 @@ const UI = (function() {
         toggleFullscreen,
         handleResize,
         updateSceneButtons,
-        updateEffectButtons
+        updateEffectButtons,
+        toggleSpeech
     };
 })(); 

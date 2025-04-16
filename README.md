@@ -2,8 +2,6 @@
 
 A feature-rich 3D web application with interactive character animations, scene exploration, and dynamic visual effects built with Three.js.
 
-![Project Preview](hokage-office/hokage-office/textures/Office_TEXTURE.png)
-
 ## Overview
 
 This project combines character animation, scene exploration, and interactive elements to create an immersive Naruto-themed 3D web experience. Users can interact with a character model (Tobirama Senju), explore multiple detailed scenes from the Naruto universe, and apply various visual effects.
@@ -52,6 +50,31 @@ This project combines character animation, scene exploration, and interactive el
 - Responsive design for various screen sizes
 - Fullscreen mode support
 
+## Implementation Status
+
+### Fully Implemented
+- 3D rendering with Three.js PerspectiveCamera and OrbitControls
+- Material system with MeshStandardMaterial and MeshPhongMaterial
+- Lighting system with multiple light types (ambient, directional, hemisphere)
+- Scene management and switching between environments
+- Character animation controls through buttons and chat commands
+- Visual weather effects (rain and snow particle systems)
+- Time-of-day lighting changes (day, night, sunset modes)
+- UI controls for animation, scene selection, and visual effects
+- Chat interface with natural language processing
+
+### Partially Implemented
+- Shadow rendering (implemented for character but not all objects)
+- Hierarchical modeling (limited to scene structure and model loading)
+- Tone mapping (implemented but with limited configuration)
+- Server-side components and multiplayer interaction
+- Audio and sound effects
+
+### Not Yet Implemented
+- Physical simulations (physics, gravity, collision detection)
+- Reflections and advanced visual elements
+- Alternative input methods beyond mouse and text input
+
 ## Usage
 
 ### Character Controls
@@ -68,6 +91,8 @@ This project combines character animation, scene exploration, and interactive el
 ### Visual Effects
 - Use natural language commands in chat to change visual effects
   - Examples: "Make it night", "Can you make it rain?", "Show me a sunset"
+- Use visual effects buttons to toggle between day, night, and sunset modes
+- Toggle weather effects like rain and snow
 
 ### Chat Interaction
 - Type messages in the chat input

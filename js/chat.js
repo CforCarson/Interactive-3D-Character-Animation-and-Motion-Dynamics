@@ -8,6 +8,87 @@ const Chat = (function() {
     const openaiApiKey = "sk-nqtowru7qRRut0ST1056C083DeEf45958b47Ea8d53C79f87";
     const openaiBaseUrl = "https://api.gpt.ge/v1/";
     
+    // Speech synthesis configuration
+    let speechSynthesis = window.speechSynthesis;
+    let isSpeechEnabled = true;
+    let availableVoices = [];
+    
+    // Function to populate available voices
+    function loadVoices() {
+        availableVoices = speechSynthesis.getVoices();
+        console.log("Speech synthesis voices loaded:", availableVoices.length);
+    }
+    
+    // Load voices when they become available
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    
+    // Initial load of voices (might already be available)
+    loadVoices();
+    
+    // Function to speak text with a deep male voice
+    function speakText(text) {
+        if (!isSpeechEnabled) return;
+        
+        // Stop any current speech
+        speechSynthesis.cancel();
+        
+        // Create a new speech utterance
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Set voice properties for a deep male voice
+        utterance.pitch = 0.8;      // Lower pitch for deeper voice
+        utterance.rate = 0.9;       // Slightly slower rate
+        utterance.volume = 1.0;     // Full volume
+        
+        // Try to find a suitable male voice
+        if (availableVoices.length > 0) {
+            // First try to find deep male voices
+            const maleVoices = availableVoices.filter(voice => 
+                voice.name.toLowerCase().includes('male') || 
+                voice.name.toLowerCase().includes('man') ||
+                voice.name.toLowerCase().includes('guy') ||
+                voice.name.toLowerCase().includes('david') ||
+                voice.name.toLowerCase().includes('tom') ||
+                voice.name.toLowerCase().includes('daniel') ||
+                voice.name.toLowerCase().includes('james')
+            );
+            
+            // If male voices are found, use the first one
+            if (maleVoices.length > 0) {
+                utterance.voice = maleVoices[0];
+                console.log("Using male voice:", maleVoices[0].name);
+            } else {
+                // If no male voice found, try to use a voice with lower pitch
+                // Default to first voice if none matching
+                utterance.pitch = 0.5; // Even lower pitch to compensate
+            }
+        }
+        
+        // Speak the text
+        speechSynthesis.speak(utterance);
+        
+        // Ensure character continues speaking animation while audio plays
+        utterance.onstart = function() {
+            Character.playSpeakingAnimation();
+        };
+        
+        // Stop animation when speech ends
+        utterance.onend = function() {
+            // Reset to idle animation if speech ends
+            if (App.currentAction && App.currentAction.getClip().name === "Speaking") {
+                Character.playIdleAnimation();
+            }
+        };
+    }
+    
+    // Toggle speech on/off
+    function toggleSpeech() {
+        isSpeechEnabled = !isSpeechEnabled;
+        return isSpeechEnabled;
+    }
+    
     // Function to send a message to the OpenAI API
     async function sendMessageToLLM(message) {
         try {
@@ -67,6 +148,9 @@ const Chat = (function() {
             // Trigger speaking animation for chat responses
             Character.playSpeakingAnimation();
             
+            // Speak the response text
+            speakText(responseText);
+            
             return responseText;
         } catch (error) {
             console.error("Error communicating with LLM API:", error);
@@ -91,6 +175,17 @@ const Chat = (function() {
     function processNLPCommands(message) {
         const lowercaseMsg = message.toLowerCase();
         let commandExecuted = false;
+        
+        // Handle voice commands
+        if (lowercaseMsg.includes('stop speaking') || lowercaseMsg.includes('mute voice') || 
+            lowercaseMsg.includes('turn off voice') || lowercaseMsg.includes('disable speech')) {
+            isSpeechEnabled = false;
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('start speaking') || lowercaseMsg.includes('unmute voice') || 
+                   lowercaseMsg.includes('turn on voice') || lowercaseMsg.includes('enable speech')) {
+            isSpeechEnabled = true;
+            commandExecuted = true;
+        }
         
         // Character animation commands
         if (lowercaseMsg.includes('greet') || lowercaseMsg.includes('hello') || lowercaseMsg.includes('hi')) {
@@ -199,6 +294,8 @@ const Chat = (function() {
         processNLPCommands,
         handleSendMessage,
         sendMessageToLLM,
-        initChatListeners
+        initChatListeners,
+        toggleSpeech,
+        isSpeechEnabled: function() { return isSpeechEnabled; }
     };
 })(); 
