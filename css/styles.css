@@ -173,6 +173,9 @@ canvas {
 .character-message {
     background-color: #4CAF50;
 }
+.system-message {
+    background-color: #FF9800;
+}
 /* Chat Options */
 #chatOptions {
     padding: 5px;

@@ -24,6 +24,12 @@ const UI = (function() {
             }
         });
         
+        // Chat mode toggle
+        document.getElementById('toggleChatModeBtn').addEventListener('click', function() {
+            const newMode = Chat.toggleChatMode();
+            updateChatModeButton(newMode);
+        });
+        
         // Speech toggle
         document.getElementById('toggleSpeechBtn').addEventListener('click', toggleSpeech);
         
@@ -32,6 +38,29 @@ const UI = (function() {
         
         // Add window resize handler
         window.addEventListener('resize', handleResize);
+    }
+    
+    // Update chat mode button appearance
+    function updateChatModeButton(mode) {
+        const chatModeIcon = document.getElementById('chatModeIcon');
+        const toggleBtn = document.getElementById('toggleChatModeBtn');
+        
+        // Clear chat history when switching modes
+        document.getElementById('chatHistory').innerHTML = '';
+        
+        if (mode === "character") {
+            chatModeIcon.textContent = '👤';
+            toggleBtn.style.backgroundColor = '#4CAF50';
+            toggleBtn.title = 'Switch to System Mode';
+            // Welcome message
+            Chat.addMessageToChat("I am Tobirama Senju, the Second Hokage. How may I assist you?", false);
+        } else {
+            chatModeIcon.textContent = '⚙️';
+            toggleBtn.style.backgroundColor = '#FF9800';
+            toggleBtn.title = 'Switch to Character Mode';
+            // System welcome message
+            Chat.addMessageToChat("System mode active. I can help with visual effects like day/night modes or weather effects.", false);
+        }
     }
     
     // Toggle speech on/off
@@ -113,6 +142,7 @@ const UI = (function() {
         handleResize,
         updateSceneButtons,
         updateEffectButtons,
-        toggleSpeech
+        toggleSpeech,
+        updateChatModeButton
     };
 })(); 

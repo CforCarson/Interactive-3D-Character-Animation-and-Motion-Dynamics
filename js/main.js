@@ -39,7 +39,7 @@ function initScene() {
     App.renderer.physicallyCorrectLights = true;
     App.renderer.outputEncoding = THREE.sRGBEncoding;
     App.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    App.renderer.toneMappingExposure = 1.0;
+    App.renderer.toneMappingExposure = 1.2;
     
     // Set up loading manager
     setupLoadingManager();
@@ -93,7 +93,7 @@ function setupLoadingManager() {
 
 function setupLighting() {
     // Directional light (sun)
-    var directionalLight = new THREE.DirectionalLight(0xfcf8e5, 1.0);
+    var directionalLight = new THREE.DirectionalLight(0xfcf8e5, 1.2);
     directionalLight.position.set(50, 100, 50);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 4096;
@@ -111,23 +111,23 @@ function setupLighting() {
     App.scene.add(directionalLight);
     
     // Hemisphere light for ambient lighting
-    var hemiLight = new THREE.HemisphereLight(0xfcf8e5, 0x080820, 0.5);
+    var hemiLight = new THREE.HemisphereLight(0xfcf8e5, 0x080820, 0.7);
     hemiLight.position.set(0, 50, 0);
     App.scene.add(hemiLight);
     
     // Secondary directional light
-    var secondaryLight = new THREE.DirectionalLight(0xd1e0ff, 0.5);
+    var secondaryLight = new THREE.DirectionalLight(0xd1e0ff, 0.7);
     secondaryLight.position.set(-80, 60, -50);
     App.scene.add(secondaryLight);
     
     // Bottom light
-    var bottomLight = new THREE.DirectionalLight(0xffffeb, 0.3);
+    var bottomLight = new THREE.DirectionalLight(0xffffeb, 0.5);
     bottomLight.position.set(0, -60, 0);
     bottomLight.castShadow = false;
     App.scene.add(bottomLight);
     
     // Subtle ambient light
-    var ambientLight = new THREE.AmbientLight(0x222222, 0.3);
+    var ambientLight = new THREE.AmbientLight(0x222222, 0.5);
     App.scene.add(ambientLight);
 
     // Store lights in App for later access

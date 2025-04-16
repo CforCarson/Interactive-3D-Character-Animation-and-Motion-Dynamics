@@ -53,7 +53,10 @@
             <input type="text" id="chatInput" placeholder="Talk to the character...">
             <button id="sendBtn">Send</button>
         </div>
-        <div id="chatOptions" style="display: flex; justify-content: flex-end; padding: 5px;">
+        <div id="chatOptions" style="display: flex; justify-content: space-between; padding: 5px;">
+            <button id="toggleChatModeBtn" title="Switch to System Mode" style="background-color: #4CAF50; color: white; border: none; border-radius: 4px; padding: 5px 8px; cursor: pointer;">
+                <span id="chatModeIcon">👤</span>
+            </button>
             <button id="toggleSpeechBtn" title="Toggle Speech" style="background-color: #4CAF50; color: white; border: none; border-radius: 4px; padding: 5px 8px; cursor: pointer;">
                 <span id="speechIcon">🔊</span>
             </button>
@@ -97,6 +100,9 @@
             
             // Initialize chat listeners
             Chat.initChatListeners();
+            
+            // Display initial character welcome message
+            Chat.addMessageToChat("I am Tobirama Senju, the Second Hokage. How may I assist you?", false);
         });
     </script>
 </body>

@@ -196,6 +196,22 @@ const Character = (function() {
         });
     }
     
+    // Function to play idle animation (return to normal state)
+    function playIdleAnimation() {
+        if (!App.characterModel || !App.isCharacterView) return;
+        
+        // Store current position, rotation and scale
+        const currentPosition = App.characterModel.position.clone();
+        const currentRotation = App.characterModel.rotation.clone();
+        const currentScale = App.characterModel.scale.clone();
+        
+        // Reset flag
+        App.isPlayingGreet = false;
+        
+        // Load character but preserve position, rotation and scale
+        reloadCharacterWithPreservedTransform(currentPosition, currentRotation, currentScale);
+    }
+    
     // Function to play speaking animation
     function playSpeakingAnimation() {
         if (App.isPlayingGreet || !App.characterModel) return;
@@ -260,30 +276,22 @@ const Character = (function() {
             // Set up animation mixer
             App.mixer = new THREE.AnimationMixer(App.characterModel);
             
-            // Play the speaking animation once
+            // Play the speaking animation
             if (gltf.animations && gltf.animations.length > 0) {
                 App.currentAction = App.mixer.clipAction(gltf.animations[0]);
                 App.currentAction.reset();
-                App.currentAction.setLoop(THREE.LoopOnce);
-                App.currentAction.clampWhenFinished = true;
+                App.currentAction.setLoop(THREE.LoopRepeat); // Use repeat instead of once
                 App.currentAction.play();
                 
-                // Get animation duration
-                var duration = gltf.animations[0].duration;
-                
-                // After animation completes, go back to normal
-                setTimeout(function() {
-                    // Only switch back if we're still in character view
-                    if (App.isCharacterView) {
-                        App.isPlayingGreet = false;
-                        
-                        // Load character but preserve position, rotation and scale
-                        reloadCharacterWithPreservedTransform(currentPosition, currentRotation, currentScale);
-                    }
-                }, duration * 1000);
+                // Store animation clip name for identification
+                if (App.currentAction.getClip()) {
+                    App.currentAction.getClip().name = "Speaking";
+                }
             }
             
             document.getElementById('loading').style.display = 'none';
+            
+            // Note: We don't set a timeout here anymore, as speech end will trigger playIdleAnimation
         });
     }
     
@@ -826,6 +834,7 @@ const Character = (function() {
         loadCharacter,
         playGreetAnimation,
         playSpeakingAnimation,
+        playIdleAnimation,
         playDanceAnimation,
         playBoxingAnimation,
         playJumpAnimation,

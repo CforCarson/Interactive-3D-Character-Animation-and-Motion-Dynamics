@@ -53,16 +53,16 @@ const Effects = (function() {
             case 'day':
                 App.scene.background = new THREE.Color(0x87CEFA);
                 App.scene.fog = new THREE.FogExp2(0x87CEFA, 0.001);
-                App.lights.ambientLight.intensity = 0.3;
-                App.lights.hemiLight.intensity = 0.5;
+                App.lights.ambientLight.intensity = 0.5;
+                App.lights.hemiLight.intensity = 0.7;
                 App.lights.hemiLight.groundColor.set(0x080820);
                 App.lights.hemiLight.skyColor.set(0xfcf8e5);
-                App.lights.directionalLight.intensity = 1.0;
+                App.lights.directionalLight.intensity = 1.2;
                 App.lights.directionalLight.color.set(0xfcf8e5);
-                App.lights.secondaryLight.intensity = 0.5;
+                App.lights.secondaryLight.intensity = 0.7;
                 App.lights.secondaryLight.color.set(0xd1e0ff);
-                App.lights.bottomLight.intensity = 0.3;
-                App.renderer.toneMappingExposure = 1.0;
+                App.lights.bottomLight.intensity = 0.5;
+                App.renderer.toneMappingExposure = 1.2;
                 break;
             case 'sunset':
                 App.scene.background = new THREE.Color(0xf77622);
