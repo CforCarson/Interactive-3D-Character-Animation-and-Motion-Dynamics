@@ -6,6 +6,21 @@ A feature-rich 3D web application with interactive character animations, scene e
 
 This project combines character animation, scene exploration, and interactive elements to create an immersive Naruto-themed 3D web experience. Users can interact with a character model (Tobirama Senju), explore multiple detailed scenes from the Naruto universe, and apply various visual effects.
 
+## Client-Server Architecture
+
+The application now features a client-server architecture:
+
+### Server Component
+- Express.js based API server
+- Handles chat message processing via OpenAI-compatible API
+- Stores and synchronizes scene state information
+- Enables potential for multi-user interactions
+
+### Client Component
+- Three.js based 3D rendering
+- Communicates with server for chat and scene synchronization
+- Falls back to local mode when server is unavailable
+
 ## Features
 
 ### Character Animation
@@ -28,7 +43,7 @@ This project combines character animation, scene exploration, and interactive el
 - Ability to seamlessly switch between scenes
 
 ### Interactive Chat System
-- AI-powered character responses
+- AI-powered character responses via server API
 - Natural language processing for command detection
 - Command-triggered animations and scene changes
 - Contextual conversation history
@@ -49,31 +64,36 @@ This project combines character animation, scene exploration, and interactive el
 - Chat interface for character interaction
 - Responsive design for various screen sizes
 - Fullscreen mode support
+- Server status indicator
 
-## Implementation Status
+## Installation
 
-### Fully Implemented
-- 3D rendering with Three.js PerspectiveCamera and OrbitControls
-- Material system with MeshStandardMaterial and MeshPhongMaterial
-- Lighting system with multiple light types (ambient, directional, hemisphere)
-- Scene management and switching between environments
-- Character animation controls through buttons and chat commands
-- Visual weather effects (rain and snow particle systems)
-- Time-of-day lighting changes (day, night, sunset modes)
-- UI controls for animation, scene selection, and visual effects
-- Chat interface with natural language processing
+### Client
+The client is a static web application that can be hosted on any web server.
 
-### Partially Implemented
-- Shadow rendering (implemented for character but not all objects)
-- Hierarchical modeling (limited to scene structure and model loading)
-- Tone mapping (implemented but with limited configuration)
-- Server-side components and multiplayer interaction
-- Audio and sound effects
+### Server
+Server setup instructions are available in the [server README](server/README.md).
 
-### Not Yet Implemented
-- Physical simulations (physics, gravity, collision detection)
-- Reflections and advanced visual elements
-- Alternative input methods beyond mouse and text input
+## Running the Application
+
+### Development Mode
+
+1. Start the server:
+   ```
+   cd server
+   npm install
+   npm run dev
+   ```
+
+2. Open the client in your browser:
+   - If running locally, navigate to `http://localhost:3000`
+   - The application will also work without the server in a fallback local mode
+
+### Production Deployment
+
+1. Deploy the server on your preferred hosting platform
+2. Configure the client's server API URL if necessary
+3. Host the static client files on a web server
 
 ## Usage
 
@@ -115,3 +135,4 @@ This project is for educational purposes only.
 
 - Three.js for the 3D rendering capabilities
 - The Naruto series for the character and scene inspiration
+- Express.js for the server framework

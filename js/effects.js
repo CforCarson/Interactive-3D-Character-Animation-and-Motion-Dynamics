@@ -82,6 +82,16 @@ const Effects = (function() {
         
         // Update effect buttons
         updateEffectButtons();
+        
+        // Update app state for server sync
+        if (App && typeof App.currentTimeOfDay !== 'undefined') {
+            App.currentTimeOfDay = currentShaderEffect;
+            
+            // If connected to server, trigger an update
+            if (App.isServerConnected && typeof sendSceneUpdateToServer === 'function') {
+                sendSceneUpdateToServer();
+            }
+        }
     }
     
     // Toggle rain effect on/off
@@ -98,6 +108,16 @@ const Effects = (function() {
         
         // Update effect buttons
         updateEffectButtons();
+        
+        // Update app state for server sync
+        if (App && App.weatherEffects) {
+            App.weatherEffects.rain = rainEffect;
+            
+            // If connected to server, trigger an update
+            if (App.isServerConnected && typeof sendSceneUpdateToServer === 'function') {
+                sendSceneUpdateToServer();
+            }
+        }
     }
     
     // Toggle snow effect on/off
@@ -114,6 +134,16 @@ const Effects = (function() {
         
         // Update effect buttons
         updateEffectButtons();
+        
+        // Update app state for server sync
+        if (App && App.weatherEffects) {
+            App.weatherEffects.snow = snowEffect;
+            
+            // If connected to server, trigger an update
+            if (App.isServerConnected && typeof sendSceneUpdateToServer === 'function') {
+                sendSceneUpdateToServer();
+            }
+        }
     }
     
     // Reset all effects to default
@@ -129,6 +159,38 @@ const Effects = (function() {
         
         // Update effect buttons
         updateEffectButtons();
+        
+        // Update app state for server sync
+        if (App) {
+            if (typeof App.currentTimeOfDay !== 'undefined') {
+                App.currentTimeOfDay = 'day';
+            }
+            
+            if (App.weatherEffects) {
+                App.weatherEffects.rain = false;
+                App.weatherEffects.snow = false;
+            }
+            
+            // If connected to server, trigger an update
+            if (App.isServerConnected && typeof sendSceneUpdateToServer === 'function') {
+                sendSceneUpdateToServer();
+            }
+        }
+    }
+    
+    // Get current shader effect
+    function getCurrentShaderEffect() {
+        return currentShaderEffect;
+    }
+    
+    // Check if rain effect is active
+    function isRainEffectActive() {
+        return rainEffect;
+    }
+    
+    // Check if snow effect is active
+    function isSnowEffectActive() {
+        return snowEffect;
     }
     
     // Create rain particle system
@@ -286,6 +348,9 @@ const Effects = (function() {
         toggleRainEffect,
         toggleSnowEffect,
         resetAllEffects,
-        updateWeatherEffects
+        updateWeatherEffects,
+        getCurrentShaderEffect,
+        isRainEffectActive,
+        isSnowEffectActive
     };
 })(); 

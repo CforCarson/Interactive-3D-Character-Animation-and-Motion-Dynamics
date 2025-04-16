@@ -6,9 +6,10 @@ const Chat = (function() {
     const characterName = "Tobirama"; // Character name
     let chatMode = "character"; // Default chat mode: "character" or "system"
     
-    // OpenAI API configuration
-    const openaiApiKey = "sk-nqtowru7qRRut0ST1056C083DeEf45958b47Ea8d53C79f87";
-    const openaiBaseUrl = "https://api.gpt.ge/v1/";
+    // Server API configuration
+    const serverApiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        ? 'http://localhost:3000/api' // Development
+        : '/api'; // Production
     
     // Speech synthesis configuration
     let speechSynthesis = window.speechSynthesis;
@@ -241,7 +242,7 @@ const Chat = (function() {
         return chatMode === "character" ? characterChatContext : systemChatContext;
     }
     
-    // Function to send a message to the OpenAI API
+    // Function to send a message to the server API
     async function sendMessageToLLM(message) {
         try {
             // Show loading indicator
@@ -286,18 +287,16 @@ const Chat = (function() {
                 "content": message
             });
             
-            // Make the API request
+            // Make the API request to our server instead of directly to OpenAI
             const response = await axios({
                 method: 'post',
-                url: openaiBaseUrl + 'chat/completions',
+                url: `${serverApiUrl}/chat`,
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${openaiApiKey}`,
-                    'x-foo': 'true'
+                    'Content-Type': 'application/json'
                 },
                 data: {
-                    model: 'gpt-3.5-turbo',
-                    messages: messages
+                    messages: messages,
+                    mode: chatMode
                 }
             });
             
@@ -336,7 +335,7 @@ const Chat = (function() {
             
             return responseText;
         } catch (error) {
-            console.error("Error communicating with LLM API:", error);
+            console.error("Error communicating with server API:", error);
             document.getElementById('loading').style.display = 'none';
             return "I'm having trouble responding right now. Please try again later.";
         }

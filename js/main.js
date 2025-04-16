@@ -15,7 +15,13 @@ const App = {
     cloudParticles: [],
     ground: null,
     shadowGround: null,
-    currentGLBModel: null
+    currentGLBModel: null,
+    isServerConnected: false,
+    currentTimeOfDay: 'day',
+    weatherEffects: {
+        rain: false,
+        snow: false
+    }
 };
 
 // Initialize the scene
@@ -69,8 +75,75 @@ function initScene() {
     // Initialize effect buttons
     Effects.updateEffectButtons();
     
+    // Initialize server connection
+    initServerConnection();
+    
     // Load Character by default
     Character.loadCharacter();
+}
+
+// Initialize connection to the server
+async function initServerConnection() {
+    try {
+        const connected = await SceneState.init();
+        App.isServerConnected = connected;
+        
+        if (connected) {
+            console.log("Connected to server successfully");
+            // Schedule periodic updates
+            setInterval(sendSceneUpdateToServer, 5000);
+        } else {
+            console.warn("Failed to connect to server, running in offline mode");
+        }
+    } catch (error) {
+        console.error("Error initializing server connection:", error);
+        App.isServerConnected = false;
+    }
+}
+
+// Send scene state update to the server
+function sendSceneUpdateToServer() {
+    if (!App.isServerConnected || !App.characterModel) return;
+    
+    let sceneName = "default";
+    
+    if (App.currentGLBModel) {
+        // Determine which scene is currently loaded
+        if (App.currentGLBModel.userData && App.currentGLBModel.userData.sceneName) {
+            sceneName = App.currentGLBModel.userData.sceneName;
+        } else {
+            // Try to guess from the scene configuration
+            Object.entries(Scenes.sceneConfigurations).forEach(([path, config]) => {
+                if (path === App.currentScenePath) {
+                    sceneName = config.sceneName || path;
+                }
+            });
+        }
+    } else if (!App.isCharacterView) {
+        sceneName = "hokage_office";
+    }
+    
+    // Get character position and rotation
+    const characterPosition = App.characterModel ? {
+        x: App.characterModel.position.x,
+        y: App.characterModel.position.y,
+        z: App.characterModel.position.z
+    } : null;
+    
+    const characterRotation = App.characterModel ? {
+        x: App.characterModel.rotation.x,
+        y: App.characterModel.rotation.y,
+        z: App.characterModel.rotation.z
+    } : null;
+    
+    // Send update to server
+    SceneState.updateSceneState(
+        sceneName,
+        characterPosition,
+        characterRotation,
+        App.currentTimeOfDay,
+        App.weatherEffects
+    );
 }
 
 function setupLoadingManager() {
@@ -384,7 +457,7 @@ function applyTextureToMesh(mesh, texture) {
     }
 }
 
-// Function to update the shadow ground visibility and position
+// Helper function to update shadow ground
 function updateShadowGround(isCharView, position) {
     if (App.shadowGround) {
         if (isCharView) {
@@ -403,5 +476,17 @@ function updateShadowGround(isCharView, position) {
             // Hide shadow ground in scene views
             App.shadowGround.visible = false;
         }
+    }
+    
+    // Update time of day and weather effects in the App state
+    App.currentTimeOfDay = Effects ? Effects.getCurrentShaderEffect() || 'day' : 'day';
+    App.weatherEffects = {
+        rain: Effects ? Effects.isRainEffectActive() : false,
+        snow: Effects ? Effects.isSnowEffectActive() : false
+    };
+    
+    // If connected to server, send an update
+    if (App.isServerConnected) {
+        sendSceneUpdateToServer();
     }
 } 

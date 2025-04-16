@@ -44,6 +44,11 @@
                 <button class="effectButton" onclick="Effects.resetAllEffects()">Reset Effects</button>
             </div>
         </div>
+        
+        <!-- Server Status Indicator -->
+        <div id="serverStatus" style="margin-top: 20px; padding: 5px; background-color: rgba(0,0,0,0.3); border-radius: 5px; text-align: center; color: white; font-size: 12px;">
+            Server Status: Connecting...
+        </div>
     </div>
     
     <!-- Chat Container -->
@@ -83,6 +88,7 @@
     <script src="js/character.js"></script>
     <script src="js/scenes.js"></script>
     <script src="js/chat.js"></script>
+    <script src="js/sceneState.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/main.js"></script>
     
@@ -103,6 +109,18 @@
             
             // Display initial character welcome message
             Chat.addMessageToChat("I am Tobirama Senju, the Second Hokage. How may I assist you?", false);
+            
+            // Update server status indicator
+            setTimeout(() => {
+                const serverStatus = document.getElementById('serverStatus');
+                if (App.isServerConnected) {
+                    serverStatus.textContent = 'Server Status: Connected';
+                    serverStatus.style.backgroundColor = 'rgba(0,128,0,0.5)';
+                } else {
+                    serverStatus.textContent = 'Server Status: Offline (Local Mode)';
+                    serverStatus.style.backgroundColor = 'rgba(128,0,0,0.5)';
+                }
+            }, 3000);
         });
     </script>
 </body>
