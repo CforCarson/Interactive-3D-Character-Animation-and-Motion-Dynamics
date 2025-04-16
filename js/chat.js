@@ -1,0 +1,204 @@
+// Chat module for handling chat and NLP commands
+const Chat = (function() {
+    // Private variables
+    let chatContext = []; // Store conversation history for context
+    const characterName = "Tobirama"; // Character name
+    
+    // OpenAI API configuration
+    const openaiApiKey = "sk-nqtowru7qRRut0ST1056C083DeEf45958b47Ea8d53C79f87";
+    const openaiBaseUrl = "https://api.gpt.ge/v1/";
+    
+    // Function to send a message to the OpenAI API
+    async function sendMessageToLLM(message) {
+        try {
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').textContent = 'Tobirama is thinking...';
+            
+            // Prepare messages array with context for the API
+            let messages = [
+                {
+                    "role": "system",
+                    "content": `You are ${characterName} 千手扉间 from the Naruto universe. You are the Second Hokage of the Hidden Leaf Village, known for your serious demeanor, intelligence, and water-style jutsu. Respond as this character would, with brief, focused answers that match the character's personality.`
+                }
+            ];
+            
+            // Add conversation history for context
+            chatContext.forEach(item => {
+                messages.push(item);
+            });
+            
+            // Add the current user message
+            messages.push({
+                "role": "user",
+                "content": message
+            });
+            
+            // Make the API request
+            const response = await axios({
+                method: 'post',
+                url: openaiBaseUrl + 'chat/completions',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${openaiApiKey}`,
+                    'x-foo': 'true'
+                },
+                data: {
+                    model: 'gpt-3.5-turbo',
+                    messages: messages
+                }
+            });
+            
+            // Get the response text
+            const responseText = response.data.choices[0].message.content;
+            
+            // Update chat context (store up to 10 messages for context)
+            chatContext.push({ role: "user", content: message });
+            chatContext.push({ role: "assistant", content: responseText });
+            
+            // Keep context size manageable (last 10 messages)
+            if (chatContext.length > 20) {
+                chatContext = chatContext.slice(chatContext.length - 20);
+            }
+            
+            // Hide loading indicator
+            document.getElementById('loading').style.display = 'none';
+            
+            // Trigger speaking animation for chat responses
+            Character.playSpeakingAnimation();
+            
+            return responseText;
+        } catch (error) {
+            console.error("Error communicating with LLM API:", error);
+            document.getElementById('loading').style.display = 'none';
+            return "I'm having trouble responding right now. Please try again later.";
+        }
+    }
+    
+    // Function to add a message to the chat history UI
+    function addMessageToChat(message, isUser) {
+        const chatHistory = document.getElementById('chatHistory');
+        const messageElement = document.createElement('div');
+        messageElement.className = isUser ? 'message user-message' : 'message character-message';
+        messageElement.textContent = message;
+        chatHistory.appendChild(messageElement);
+        
+        // Scroll to the bottom to show the newest message
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+    
+    // NLP command processor for interpreting chat messages
+    function processNLPCommands(message) {
+        const lowercaseMsg = message.toLowerCase();
+        let commandExecuted = false;
+        
+        // Character animation commands
+        if (lowercaseMsg.includes('greet') || lowercaseMsg.includes('hello') || lowercaseMsg.includes('hi')) {
+            setTimeout(() => Character.playGreetAnimation(), 500);
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('dance') || lowercaseMsg.includes('dancing')) {
+            setTimeout(() => Character.playDanceAnimation(), 500);
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('box') || lowercaseMsg.includes('boxing') || lowercaseMsg.includes('fight')) {
+            setTimeout(() => Character.playBoxingAnimation(), 500);
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('jump')) {
+            setTimeout(() => Character.playJumpAnimation(), 500);
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('spin') || lowercaseMsg.includes('turn around')) {
+            setTimeout(() => Character.playSpinAnimation(), 500);
+            commandExecuted = true;
+        }
+        
+        // Scene change commands
+        if (lowercaseMsg.includes('hokage office') || lowercaseMsg.includes('hokage room')) {
+            setTimeout(() => Scenes.loadScene('Scenes/scene1_HokageRoom.glb'), 500);
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('village') || lowercaseMsg.includes('naruto village')) {
+            setTimeout(() => Scenes.loadScene('Scenes/scene2_NarutoVillage.glb'), 500);
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('resort')) {
+            setTimeout(() => Scenes.loadScene('Scenes/scene3_Resort.glb'), 500);
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('hot spring') || lowercaseMsg.includes('onsen')) {
+            setTimeout(() => Scenes.loadScene('Scenes/scene4_HotSpring.glb'), 500);
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('character view') || lowercaseMsg.includes('show character')) {
+            setTimeout(() => {
+                App.isCharacterView = true;
+                Character.loadCharacter();
+            }, 500);
+            commandExecuted = true;
+        }
+        
+        // Shader/visual effect commands
+        if (lowercaseMsg.includes('night mode') || lowercaseMsg.includes('dark mode') || lowercaseMsg.includes('make it night')) {
+            Effects.applyShaderEffect('night');
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('day mode') || lowercaseMsg.includes('light mode') || lowercaseMsg.includes('make it day')) {
+            Effects.applyShaderEffect('day');
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('sunset') || lowercaseMsg.includes('orange sky')) {
+            Effects.applyShaderEffect('sunset');
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('rain') || lowercaseMsg.includes('make it rain')) {
+            Effects.toggleRainEffect();
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('snow') || lowercaseMsg.includes('make it snow')) {
+            Effects.toggleSnowEffect();
+            commandExecuted = true;
+        } else if (lowercaseMsg.includes('reset effects') || lowercaseMsg.includes('clear effects')) {
+            Effects.resetAllEffects();
+            commandExecuted = true;
+        }
+        
+        return commandExecuted;
+    }
+    
+    // Function to handle sending a chat message
+    async function handleSendMessage() {
+        const chatInput = document.getElementById('chatInput');
+        const userMessage = chatInput.value.trim();
+        
+        if (userMessage) {
+            // Add user message to chat
+            addMessageToChat(userMessage, true);
+            
+            // Clear input field
+            chatInput.value = '';
+            
+            // Process for NLP commands
+            const commandExecuted = processNLPCommands(userMessage);
+            
+            // Get response from LLM
+            const response = await sendMessageToLLM(userMessage);
+            
+            // Process LLM response for potential command triggers
+            processNLPCommands(response);
+            
+            // Add character response to chat
+            addMessageToChat(response, false);
+        }
+    }
+    
+    // Initialize chat event listeners
+    function initChatListeners() {
+        document.getElementById('sendBtn').addEventListener('click', handleSendMessage);
+        
+        // Allow sending message with Enter key
+        document.getElementById('chatInput').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                handleSendMessage();
+            }
+        });
+    }
+    
+    // Public API
+    return {
+        addMessageToChat,
+        processNLPCommands,
+        handleSendMessage,
+        sendMessageToLLM,
+        initChatListeners
+    };
+})(); 
